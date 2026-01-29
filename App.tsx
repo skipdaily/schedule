@@ -19,6 +19,7 @@ const App: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [view, setView] = useState<ViewMode['current']>('dashboard');
   const [showSettings, setShowSettings] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [showProjectSelector, setShowProjectSelector] = useState(false);
   
   // Modal State
@@ -132,6 +133,21 @@ const App: React.FC = () => {
   const handleExportCSV = () => {
     if (project) {
       exportProjectToCSV(project);
+    }
+  };
+
+  const handleSyncToSupabase = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      await Promise.all(projects.map(p => upsertProject(p)));
+      await saveAppState(currentProjectId);
+      alert('Synced to Supabase.');
+    } catch (error) {
+      console.error('Failed to sync to Supabase', error);
+      alert('Sync failed. Check Supabase settings.');
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -653,6 +669,15 @@ const App: React.FC = () => {
                             title="Export to CSV"
                         >
                             <FileDown className="w-5 h-5" />
+                        </button>
+
+                        <button 
+                          onClick={handleSyncToSupabase}
+                          className={`text-slate-300 hover:text-white p-2 rounded-full hover:bg-slate-800 transition-colors ${isSyncing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          title="Sync to Supabase"
+                          disabled={isSyncing}
+                        >
+                          <Upload className="w-5 h-5" />
                         </button>
                         
                         <button 
