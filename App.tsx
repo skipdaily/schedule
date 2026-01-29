@@ -140,8 +140,26 @@ const App: React.FC = () => {
 
   const handleDownloadImage = async () => {
     if (!mainContentRef.current) return;
+    const element = mainContentRef.current;
+    const matrixScroll = element.querySelector('.matrix-scroll') as HTMLElement | null;
+
+    const originalStyles = matrixScroll ? {
+      overflow: matrixScroll.style.overflow,
+      height: matrixScroll.style.height,
+      maxHeight: matrixScroll.style.maxHeight,
+      width: matrixScroll.style.width
+    } : null;
+
     try {
-      const element = mainContentRef.current;
+      if (matrixScroll) {
+        matrixScroll.scrollTop = 0;
+        matrixScroll.scrollLeft = 0;
+        matrixScroll.style.overflow = 'visible';
+        matrixScroll.style.maxHeight = 'none';
+        matrixScroll.style.height = `${matrixScroll.scrollHeight}px`;
+        matrixScroll.style.width = `${matrixScroll.scrollWidth}px`;
+      }
+
       const canvas = await html2canvas(element, {
         backgroundColor: '#f8fafc',
         scale: 2,
@@ -150,7 +168,7 @@ const App: React.FC = () => {
         windowHeight: element.scrollHeight
       });
       const dataUrl = canvas.toDataURL('image/png');
-      const filename = `${project?.name || 'flowstate'}-${view}.png`;
+      const filename = `${project?.name || 'flowstate'}-${view}-full.png`;
       const link = document.createElement('a');
       link.href = dataUrl;
       link.download = filename;
@@ -165,6 +183,13 @@ const App: React.FC = () => {
     } catch (error) {
       console.error('Failed to download image', error);
       alert('Image download failed. Please try again.');
+    } finally {
+      if (matrixScroll && originalStyles) {
+        matrixScroll.style.overflow = originalStyles.overflow;
+        matrixScroll.style.height = originalStyles.height;
+        matrixScroll.style.maxHeight = originalStyles.maxHeight;
+        matrixScroll.style.width = originalStyles.width;
+      }
     }
   };
 
