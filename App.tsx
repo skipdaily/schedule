@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import html2canvas from 'html2canvas';
 import { Project, ViewMode, TaskStatus, Unit, Trade } from './types';
 import { updateReadinessState, getTaskKey, pushLinkedTasks, ensureWeekday } from './services/logic';
 import { generateProjectPDF } from './services/pdf';
@@ -8,7 +9,7 @@ import Dashboard from './components/Dashboard';
 import MatrixView from './components/MatrixView';
 import ProjectSetup from './components/ProjectSetup';
 import EditProjectModal from './components/EditProjectModal';
-import { LayoutDashboard, Grid3X3, Plus, ArrowLeft, XCircle, Play, CheckCircle, Settings, Download, FolderOpen, Trash2, Upload, FileDown, Link2, Unlink } from 'lucide-react';
+import { LayoutDashboard, Grid3X3, Plus, ArrowLeft, XCircle, Play, CheckCircle, Settings, Download, FolderOpen, Trash2, Upload, FileDown, Link2, Unlink, ImageDown } from 'lucide-react';
 
 const LEGACY_STORAGE_KEY = 'flowstate_projects_v1';
 
@@ -17,6 +18,7 @@ const App: React.FC = () => {
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mainContentRef = useRef<HTMLElement | null>(null);
   const [view, setView] = useState<ViewMode['current']>('dashboard');
   const [showSettings, setShowSettings] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -133,6 +135,36 @@ const App: React.FC = () => {
   const handleExportCSV = () => {
     if (project) {
       exportProjectToCSV(project);
+    }
+  };
+
+  const handleDownloadImage = async () => {
+    if (!mainContentRef.current) return;
+    try {
+      const element = mainContentRef.current;
+      const canvas = await html2canvas(element, {
+        backgroundColor: '#f8fafc',
+        scale: 2,
+        useCORS: true,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight
+      });
+      const dataUrl = canvas.toDataURL('image/png');
+      const filename = `${project?.name || 'flowstate'}-${view}.png`;
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = filename;
+
+      if (typeof link.download === 'string') {
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        window.open(dataUrl, '_blank');
+      }
+    } catch (error) {
+      console.error('Failed to download image', error);
+      alert('Image download failed. Please try again.');
     }
   };
 
@@ -687,6 +719,14 @@ const App: React.FC = () => {
                         >
                             <Download className="w-5 h-5" />
                         </button>
+
+                        <button 
+                          onClick={handleDownloadImage}
+                          className="text-slate-300 hover:text-white p-2 rounded-full hover:bg-slate-800 transition-colors"
+                          title="Download Image"
+                        >
+                          <ImageDown className="w-5 h-5" />
+                        </button>
                         
                         <button 
                             onClick={() => setShowSettings(true)}
@@ -711,7 +751,7 @@ const App: React.FC = () => {
       </nav>
 
       {/* Content Area */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full">
+      <main ref={mainContentRef} className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full">
         {!project && view !== 'setup' ? (
            <div className="flex flex-col items-center justify-center h-[80vh] text-center space-y-6">
                 <div className="bg-white p-10 rounded-2xl shadow-xl border border-slate-200 max-w-lg">
