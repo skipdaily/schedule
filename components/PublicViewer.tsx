@@ -243,7 +243,7 @@ const PublicViewer: React.FC = () => {
                 <div key={attachment.id} className="border border-slate-200 rounded-lg overflow-hidden">
                   {attachment.type === 'image' ? (
                     <img 
-                      src={attachment.dataUrl} 
+                      src={attachment.url} 
                       alt={attachment.name}
                       className="w-full h-40 object-cover"
                     />

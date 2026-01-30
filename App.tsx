@@ -3,7 +3,7 @@ import { Project, ViewMode, TaskStatus, Unit, Trade, Attachment } from './types'
 import { updateReadinessState, getTaskKey, pushLinkedTasks, ensureWeekday } from './services/logic';
 import { generateProjectPDF } from './services/pdf';
 import { exportProjectToCSV, importProjectFromCSV, downloadTemplateCSV } from './services/csv';
-import { fetchAppState, fetchProjects, saveAppState, upsertProject, deleteProject as deleteProjectRemote } from './services/supabase';
+import { fetchAppState, fetchProjects, saveAppState, upsertProject, deleteProject as deleteProjectRemote, uploadAttachment, deleteAttachment } from './services/supabase';
 import Dashboard from './components/Dashboard';
 import MatrixView from './components/MatrixView';
 import ProjectSetup from './components/ProjectSetup';
@@ -334,28 +334,30 @@ const App: React.FC = () => {
   };
 
   // Attachment handlers
-  const handleAttachmentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!project || !e.target.files) return;
     
     const files = Array.from(e.target.files);
     
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result as string;
-        const isImage = file.type.startsWith('image/');
-        const isPdf = file.type === 'application/pdf';
-        
-        if (!isImage && !isPdf) {
-          alert('Please upload only images or PDF files');
-          return;
-        }
-        
+    for (const file of files) {
+      const isImage = file.type.startsWith('image/');
+      const isPdf = file.type === 'application/pdf';
+      
+      if (!isImage && !isPdf) {
+        alert('Please upload only images or PDF files');
+        continue;
+      }
+      
+      // Upload to Supabase Storage
+      const result = await uploadAttachment(project.id, file);
+      
+      if (result) {
         const newAttachment: Attachment = {
           id: `att_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           name: file.name,
           type: isImage ? 'image' : 'pdf',
-          dataUrl,
+          url: result.url,
+          storagePath: result.path,
           addedAt: new Date().toISOString()
         };
         
@@ -365,16 +367,22 @@ const App: React.FC = () => {
         };
         
         updateCurrentProject(updatedProject);
-      };
-      reader.readAsDataURL(file);
-    });
+      } else {
+        alert(`Failed to upload ${file.name}`);
+      }
+    }
     
     // Reset input
     e.target.value = '';
   };
 
-  const handleDeleteAttachment = (attachmentId: string) => {
+  const handleDeleteAttachment = async (attachmentId: string) => {
     if (!project) return;
+    
+    const attachment = project.attachments?.find(a => a.id === attachmentId);
+    if (attachment?.storagePath) {
+      await deleteAttachment(attachment.storagePath);
+    }
     
     const updatedProject = {
       ...project,
@@ -902,7 +910,7 @@ const App: React.FC = () => {
                         <div key={attachment.id} className="relative group border border-slate-200 rounded-lg overflow-hidden">
                           {attachment.type === 'image' ? (
                             <img 
-                              src={attachment.dataUrl} 
+                              src={attachment.url} 
                               alt={attachment.name}
                               className="w-full h-40 object-cover"
                             />

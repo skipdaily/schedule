@@ -41,7 +41,8 @@ export interface Attachment {
   id: string;
   name: string;
   type: 'image' | 'pdf';
-  dataUrl: string; // Base64 data URL
+  url: string; // Public URL from Supabase Storage
+  storagePath: string; // Path in storage for deletion
   addedAt: string; // ISO date
 }
 

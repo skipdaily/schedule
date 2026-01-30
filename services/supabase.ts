@@ -63,3 +63,49 @@ export const saveAppState = async (currentProjectId: string | null): Promise<voi
     console.error('Failed to save app_state', error);
   }
 };
+
+// Upload attachment to Supabase Storage
+export const uploadAttachment = async (
+  projectId: string,
+  file: File
+): Promise<{ url: string; path: string } | null> => {
+  if (!supabase) return null;
+  
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${projectId}/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+  
+  const { data, error } = await supabase.storage
+    .from('attachments')
+    .upload(fileName, file, {
+      cacheControl: '3600',
+      upsert: false
+    });
+  
+  if (error) {
+    console.error('Failed to upload attachment', error);
+    return null;
+  }
+  
+  // Get public URL
+  const { data: urlData } = supabase.storage
+    .from('attachments')
+    .getPublicUrl(data.path);
+  
+  return {
+    url: urlData.publicUrl,
+    path: data.path
+  };
+};
+
+// Delete attachment from Supabase Storage
+export const deleteAttachment = async (path: string): Promise<void> => {
+  if (!supabase) return;
+  
+  const { error } = await supabase.storage
+    .from('attachments')
+    .remove([path]);
+  
+  if (error) {
+    console.error('Failed to delete attachment', error);
+  }
+};

@@ -1,8 +1,24 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Project } from '../types';
+import { Project, Attachment } from '../types';
 
-export const generateProjectPDF = (project: Project) => {
+// Helper to convert image URL to base64
+const urlToBase64 = async (url: string): Promise<string | null> => {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+};
+
+export const generateProjectPDF = async (project: Project) => {
   // Initialize PDF in landscape mode to fit the matrix
   const doc = new jsPDF({ orientation: 'landscape' });
 
@@ -145,69 +161,76 @@ export const generateProjectPDF = (project: Project) => {
   const imageAttachments = (project.attachments || []).filter(a => a.type === 'image');
   
   if (imageAttachments.length > 0) {
-    // Get the current Y position after the table
-    const finalY = (doc as any).lastAutoTable?.finalY || 100;
+    // Pre-fetch all images and convert to base64
+    const imageDataPromises = imageAttachments.map(async (attachment) => ({
+      attachment,
+      dataUrl: await urlToBase64(attachment.url)
+    }));
+    const imageData = await Promise.all(imageDataPromises);
+    const validImages = imageData.filter(d => d.dataUrl !== null);
     
-    // Add a section header
-    doc.addPage();
-    doc.setFontSize(14);
-    doc.setTextColor(30, 41, 59);
-    doc.text('Attachments', 14, 20);
-    
-    let currentY = 30;
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 14;
-    const maxImageWidth = (pageWidth - margin * 2) / 2 - 5; // Two images per row
-    let currentX = margin;
-    let rowMaxHeight = 0;
-    
-    imageAttachments.forEach((attachment, index) => {
-      try {
-        // Get image dimensions
-        const imgProps = doc.getImageProperties(attachment.dataUrl);
-        const aspectRatio = imgProps.height / imgProps.width;
+    if (validImages.length > 0) {
+      // Add a section header
+      doc.addPage();
+      doc.setFontSize(14);
+      doc.setTextColor(30, 41, 59);
+      doc.text('Attachments', 14, 20);
+      
+      let currentY = 30;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 14;
+      const maxImageWidth = (pageWidth - margin * 2) / 2 - 5; // Two images per row
+      let currentX = margin;
+      let rowMaxHeight = 0;
+      
+      for (const { attachment, dataUrl } of validImages) {
+        try {
+          // Get image dimensions
+          const imgProps = doc.getImageProperties(dataUrl!);
+          const aspectRatio = imgProps.height / imgProps.width;
         
-        let imgWidth = Math.min(maxImageWidth, 120);
-        let imgHeight = imgWidth * aspectRatio;
-        
-        // Cap height
-        if (imgHeight > 80) {
-          imgHeight = 80;
-          imgWidth = imgHeight / aspectRatio;
+          let imgWidth = Math.min(maxImageWidth, 120);
+          let imgHeight = imgWidth * aspectRatio;
+          
+          // Cap height
+          if (imgHeight > 80) {
+            imgHeight = 80;
+            imgWidth = imgHeight / aspectRatio;
+          }
+          
+          // Check if we need a new row
+          if (currentX + imgWidth > pageWidth - margin) {
+            currentX = margin;
+            currentY += rowMaxHeight + 15;
+            rowMaxHeight = 0;
+          }
+          
+          // Check if we need a new page
+          if (currentY + imgHeight > pageHeight - 20) {
+            doc.addPage();
+            currentY = 20;
+            currentX = margin;
+            rowMaxHeight = 0;
+          }
+          
+          // Add the image
+          doc.addImage(dataUrl!, 'JPEG', currentX, currentY, imgWidth, imgHeight);
+          
+          // Add caption
+          doc.setFontSize(6);
+          doc.setTextColor(100, 116, 139);
+          const captionText = attachment.name.length > 25 ? attachment.name.substring(0, 22) + '...' : attachment.name;
+          doc.text(captionText, currentX, currentY + imgHeight + 4);
+          
+          rowMaxHeight = Math.max(rowMaxHeight, imgHeight + 8);
+          currentX += imgWidth + 10;
+          
+        } catch (e) {
+          console.error('Failed to add image to PDF:', attachment.name, e);
         }
-        
-        // Check if we need a new row
-        if (currentX + imgWidth > pageWidth - margin) {
-          currentX = margin;
-          currentY += rowMaxHeight + 15;
-          rowMaxHeight = 0;
-        }
-        
-        // Check if we need a new page
-        if (currentY + imgHeight > pageHeight - 20) {
-          doc.addPage();
-          currentY = 20;
-          currentX = margin;
-          rowMaxHeight = 0;
-        }
-        
-        // Add the image
-        doc.addImage(attachment.dataUrl, 'JPEG', currentX, currentY, imgWidth, imgHeight);
-        
-        // Add caption
-        doc.setFontSize(6);
-        doc.setTextColor(100, 116, 139);
-        const captionText = attachment.name.length > 25 ? attachment.name.substring(0, 22) + '...' : attachment.name;
-        doc.text(captionText, currentX, currentY + imgHeight + 4);
-        
-        rowMaxHeight = Math.max(rowMaxHeight, imgHeight + 8);
-        currentX += imgWidth + 10;
-        
-      } catch (e) {
-        console.error('Failed to add image to PDF:', attachment.name, e);
       }
-    });
+    }
   }
 
   // Save the PDF
