@@ -12,12 +12,15 @@ interface MatrixViewProps {
   onDeleteTrade?: (tradeId: string) => void;
   onAddTrade?: (trade: Omit<Trade, 'id' | 'orderIndex'>, insertAtIndex?: number) => void;
   onEditTrade?: (tradeId: string, newName: string) => void;
+  onAddUnit?: (unit: { name: string; building: string }) => void;
+  onEditUnit?: (unitId: string, unit: { name: string; building: string }) => void;
+  onDeleteUnit?: (unitId: string) => void;
   isLinkingMode?: boolean;
   linkingFromTask?: { unitId: string; tradeId: string } | null;
   onCancelLinking?: () => void;
 }
 
-const MatrixView: React.FC<MatrixViewProps> = ({ project, onTaskClick, onReorderUnits, onReorderTrades, onDeleteTrade, onAddTrade, onEditTrade, isLinkingMode, linkingFromTask, onCancelLinking }) => {
+const MatrixView: React.FC<MatrixViewProps> = ({ project, onTaskClick, onReorderUnits, onReorderTrades, onDeleteTrade, onAddTrade, onEditTrade, onAddUnit, onEditUnit, onDeleteUnit, isLinkingMode, linkingFromTask, onCancelLinking }) => {
   const interiorTrades = project.trades.filter(t => t.scope === 'interior');
   const interiorUnits = project.units;
 
@@ -37,6 +40,16 @@ const MatrixView: React.FC<MatrixViewProps> = ({ project, onTaskClick, onReorder
   const [newTradeName, setNewTradeName] = useState('');
   const [hoveredGap, setHoveredGap] = useState<number | null>(null);
   const [editingTradeName, setEditingTradeName] = useState('');
+
+  // Add Unit state
+  const [showAddUnit, setShowAddUnit] = useState(false);
+  const [newUnitName, setNewUnitName] = useState('');
+  const [newUnitBuilding, setNewUnitBuilding] = useState('Bldg 1');
+
+  // Edit Unit state
+  const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
+  const [editUnitName, setEditUnitName] = useState('');
+  const [editUnitBuilding, setEditUnitBuilding] = useState('');
 
   // Reset editing name when selected trade changes
   useEffect(() => {
@@ -168,6 +181,14 @@ const MatrixView: React.FC<MatrixViewProps> = ({ project, onTaskClick, onReorder
                     {isReordering ? 'Done Reordering' : 'Reorder'}
                 </button>
             )}
+            {onAddUnit && (
+                <button 
+                    onClick={() => setShowAddUnit(true)}
+                    className="text-xs px-2 py-1 rounded border flex items-center gap-1 transition-colors bg-white border-slate-300 text-slate-600 hover:bg-slate-50"
+                >
+                    <Plus className="w-3 h-3" /> Add Unit
+                </button>
+            )}
         </div>
         
         <div className="flex gap-2 text-xs">
@@ -252,10 +273,18 @@ const MatrixView: React.FC<MatrixViewProps> = ({ project, onTaskClick, onReorder
                 onDragEnd={(e) => isReordering && handleDragEnd(e)}
                 onDragOver={(e) => e.preventDefault()}
               >
-                <td className={`sticky left-0 z-20 bg-white p-3 font-medium text-slate-700 border-b border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]`}>
+                <td 
+                  className={`sticky left-0 z-20 bg-white p-3 font-medium text-slate-700 border-b border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] ${!isReordering && onEditUnit ? 'cursor-pointer hover:bg-slate-50' : ''}`}
+                  onClick={() => !isReordering && onEditUnit && (() => {
+                    setEditingUnit(unit);
+                    setEditUnitName(unit.name);
+                    setEditUnitBuilding(unit.building);
+                  })()}
+                >
                   <div className="flex items-center gap-2">
                       {isReordering && <GripVertical className="w-4 h-4 text-slate-400 cursor-grab active:cursor-grabbing" />}
                       {unit.name}
+                      {!isReordering && onEditUnit && <Pencil className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />}
                   </div>
                 </td>
                 {interiorTrades.map((trade, tradeIndex) => {
@@ -456,6 +485,142 @@ const MatrixView: React.FC<MatrixViewProps> = ({ project, onTaskClick, onReorder
                   Add Trade
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Add Unit Modal */}
+      {showAddUnit && onAddUnit && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden">
+            <div className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
+              <h3 className="font-bold text-slate-800">Add New Unit</h3>
+              <button onClick={() => { setShowAddUnit(false); setNewUnitName(''); }} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Building</label>
+                <input
+                  type="text"
+                  value={newUnitBuilding}
+                  onChange={(e) => setNewUnitBuilding(e.target.value)}
+                  placeholder="e.g., Bldg 1"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Unit Name</label>
+                <input
+                  type="text"
+                  value={newUnitName}
+                  onChange={(e) => setNewUnitName(e.target.value)}
+                  placeholder="e.g., Unit 105"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setShowAddUnit(false); setNewUnitName(''); }}
+                  className="flex-1 py-2 px-4 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (newUnitName.trim()) {
+                      onAddUnit({
+                        name: newUnitName.trim(),
+                        building: newUnitBuilding.trim() || 'Bldg 1'
+                      });
+                      setNewUnitName('');
+                      setShowAddUnit(false);
+                    }
+                  }}
+                  className="flex-1 py-2 px-4 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Unit
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Unit Modal */}
+      {editingUnit && onEditUnit && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden">
+            <div className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
+              <h3 className="font-bold text-slate-800">Edit Unit</h3>
+              <button onClick={() => setEditingUnit(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Building</label>
+                <input
+                  type="text"
+                  value={editUnitBuilding}
+                  onChange={(e) => setEditUnitBuilding(e.target.value)}
+                  placeholder="e.g., Bldg 1"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Unit Name</label>
+                <input
+                  type="text"
+                  value={editUnitName}
+                  onChange={(e) => setEditUnitName(e.target.value)}
+                  placeholder="e.g., Unit 105"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setEditingUnit(null)}
+                  className="flex-1 py-2 px-4 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (editUnitName.trim()) {
+                      onEditUnit(editingUnit.id, {
+                        name: editUnitName.trim(),
+                        building: editUnitBuilding.trim() || 'Bldg 1'
+                      });
+                      setEditingUnit(null);
+                    }
+                  }}
+                  className="flex-1 py-2 px-4 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 flex items-center justify-center gap-2"
+                >
+                  <Pencil className="w-4 h-4" />
+                  Save
+                </button>
+              </div>
+              {onDeleteUnit && (
+                <div className="pt-4 border-t border-slate-200">
+                  <button
+                    onClick={() => {
+                      if (confirm(`Delete "${editingUnit.name}"? This will remove all tasks for this unit.`)) {
+                        onDeleteUnit(editingUnit.id);
+                        setEditingUnit(null);
+                      }
+                    }}
+                    className="w-full py-2 px-4 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 flex items-center justify-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete Unit
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

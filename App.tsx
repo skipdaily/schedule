@@ -8,7 +8,7 @@ import Dashboard from './components/Dashboard';
 import MatrixView from './components/MatrixView';
 import ProjectSetup from './components/ProjectSetup';
 import EditProjectModal from './components/EditProjectModal';
-import { LayoutDashboard, Grid3X3, Plus, ArrowLeft, XCircle, Play, CheckCircle, Settings, Download, FolderOpen, Trash2, Upload, FileDown, Link2, Unlink } from 'lucide-react';
+import { LayoutDashboard, Grid3X3, Plus, ArrowLeft, XCircle, Play, CheckCircle, Settings, Download, FolderOpen, Trash2, Upload, FileDown, Link2, Unlink, Share2 } from 'lucide-react';
 
 const LEGACY_STORAGE_KEY = 'flowstate_projects_v1';
 
@@ -165,6 +165,68 @@ const App: React.FC = () => {
   const handleReorderUnits = (newUnits: Unit[]) => {
     if (!project) return;
     updateCurrentProject({ ...project, units: newUnits });
+  };
+
+  const handleAddUnit = (unitData: { name: string; building: string }) => {
+    if (!project) return;
+    const newUnit: Unit = {
+      id: `u_${Date.now()}`,
+      name: unitData.name,
+      building: unitData.building,
+      scope: 'interior'
+    };
+    
+    // Create tasks for this unit for all interior trades
+    const newTasks = { ...project.tasks };
+    project.trades.filter(t => t.scope === 'interior').forEach(trade => {
+      const key = getTaskKey(newUnit.id, trade.id);
+      newTasks[key] = {
+        id: key,
+        unitId: newUnit.id,
+        tradeId: trade.id,
+        status: 'not-started',
+        lastUpdated: new Date().toISOString()
+      };
+    });
+    
+    const updatedProject = updateReadinessState({
+      ...project,
+      units: [...project.units, newUnit],
+      tasks: newTasks
+    });
+    
+    updateCurrentProject(updatedProject);
+  };
+
+  const handleEditUnit = (unitId: string, unitData: { name: string; building: string }) => {
+    if (!project) return;
+    const updatedUnits = project.units.map(u => 
+      u.id === unitId ? { ...u, name: unitData.name, building: unitData.building } : u
+    );
+    updateCurrentProject({ ...project, units: updatedUnits });
+  };
+
+  const handleDeleteUnit = (unitId: string) => {
+    if (!project) return;
+    
+    // Remove the unit
+    const newUnits = project.units.filter(u => u.id !== unitId);
+    
+    // Remove all tasks associated with this unit
+    const newTasks: Record<string, any> = {};
+    Object.entries(project.tasks).forEach(([key, task]) => {
+      if (task.unitId !== unitId) {
+        newTasks[key] = task;
+      }
+    });
+    
+    const updatedProject = updateReadinessState({
+      ...project,
+      units: newUnits,
+      tasks: newTasks
+    });
+    
+    updateCurrentProject(updatedProject);
   };
 
   const handleReorderTrades = (newTrades: Trade[]) => {
@@ -680,6 +742,21 @@ const App: React.FC = () => {
                         >
                           <Upload className="w-5 h-5" />
                         </button>
+
+                        <button 
+                          onClick={() => {
+                            const shareUrl = `${window.location.origin}/view/${project.id}`;
+                            navigator.clipboard.writeText(shareUrl).then(() => {
+                              alert('Share link copied to clipboard!');
+                            }).catch(() => {
+                              prompt('Copy this link to share:', shareUrl);
+                            });
+                          }}
+                          className="text-slate-300 hover:text-white p-2 rounded-full hover:bg-slate-800 transition-colors"
+                          title="Share Schedule"
+                        >
+                          <Share2 className="w-5 h-5" />
+                        </button>
                         
                         <button 
                             onClick={handleDownloadPdf}
@@ -736,7 +813,7 @@ const App: React.FC = () => {
           <>
             {view === 'setup' && <ProjectSetup onSave={handleCreateProject} onCancel={() => setView('dashboard')} />}
             {view === 'dashboard' && <Dashboard project={project} onTaskClick={handleTaskClick} />}
-            {view === 'matrix' && <MatrixView project={project} onTaskClick={handleTaskClick} onReorderUnits={handleReorderUnits} onReorderTrades={handleReorderTrades} onDeleteTrade={handleDeleteTrade} onAddTrade={handleAddTrade} onEditTrade={handleEditTrade} isLinkingMode={isLinkingMode} linkingFromTask={linkingFromTask} onCancelLinking={cancelLinkingMode} />}
+            {view === 'matrix' && <MatrixView project={project} onTaskClick={handleTaskClick} onReorderUnits={handleReorderUnits} onReorderTrades={handleReorderTrades} onDeleteTrade={handleDeleteTrade} onAddTrade={handleAddTrade} onEditTrade={handleEditTrade} onAddUnit={handleAddUnit} onEditUnit={handleEditUnit} onDeleteUnit={handleDeleteUnit} isLinkingMode={isLinkingMode} linkingFromTask={linkingFromTask} onCancelLinking={cancelLinkingMode} />}
           </>
         )}
       </main>

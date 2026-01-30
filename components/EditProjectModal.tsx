@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Project, Unit, Task, Trade, ScopeType } from '../types';
 import { getTaskKey } from '../services/logic';
-import { X, Plus, Trash2, Save, Building, MapPin, Calendar } from 'lucide-react';
+import { X, Plus, Trash2, Save, Building, MapPin, Calendar, Pencil } from 'lucide-react';
 
 interface EditProjectModalProps {
   project: Project;
@@ -27,7 +27,10 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ project, onSave, on
   // Add Unit Form
   const [isAddingUnit, setIsAddingUnit] = useState(false);
   const [newUnitName, setNewUnitName] = useState('');
-  const [newUnitBuilding, setNewUnitBuilding] = useState('Bldg 1');
+    const [newUnitBuilding, setNewUnitBuilding] = useState('Bldg 1');
+    const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
+    const [editingUnitName, setEditingUnitName] = useState('');
+    const [editingUnitBuilding, setEditingUnitBuilding] = useState('');
 
     // Add Trade Form
     const [isAddingTrade, setIsAddingTrade] = useState(false);
@@ -63,6 +66,26 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ project, onSave, on
       } else {
           setAddedUnits(addedUnits.filter(u => u.id !== id));
       }
+  };
+
+  const handleStartEditUnit = (unit: Unit) => {
+      setEditingUnitId(unit.id);
+      setEditingUnitName(unit.name);
+      setEditingUnitBuilding(unit.building);
+  };
+
+  const handleCancelEditUnit = () => {
+      setEditingUnitId(null);
+      setEditingUnitName('');
+      setEditingUnitBuilding('');
+  };
+
+  const handleSaveEditUnit = () => {
+      if (!editingUnitId) return;
+      const trimmedName = editingUnitName.trim();
+      if (!trimmedName) return;
+      setUnits(units.map(u => u.id === editingUnitId ? { ...u, name: trimmedName, building: editingUnitBuilding.trim() } : u));
+      handleCancelEditUnit();
   };
 
   const handleAddNewTrade = () => {
@@ -272,22 +295,72 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ project, onSave, on
                                 <tr>
                                     <th className="px-4 py-2">Unit Name</th>
                                     <th className="px-4 py-2">Building</th>
-                                    <th className="px-4 py-2 w-16">Action</th>
+                                    <th className="px-4 py-2 w-24">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {units.map(unit => (
                                     <tr key={unit.id} className="hover:bg-slate-50">
-                                        <td className="px-4 py-2 font-medium text-slate-700">{unit.name}</td>
-                                        <td className="px-4 py-2 text-slate-500">{unit.building}</td>
+                                        <td className="px-4 py-2 font-medium text-slate-700">
+                                            {editingUnitId === unit.id ? (
+                                                <input
+                                                    type="text"
+                                                    value={editingUnitName}
+                                                    onChange={(e) => setEditingUnitName(e.target.value)}
+                                                    className="w-full px-2 py-1 border border-slate-300 rounded text-sm"
+                                                />
+                                            ) : (
+                                                unit.name
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-2 text-slate-500">
+                                            {editingUnitId === unit.id ? (
+                                                <input
+                                                    type="text"
+                                                    value={editingUnitBuilding}
+                                                    onChange={(e) => setEditingUnitBuilding(e.target.value)}
+                                                    className="w-full px-2 py-1 border border-slate-300 rounded text-sm"
+                                                />
+                                            ) : (
+                                                unit.building
+                                            )}
+                                        </td>
                                         <td className="px-4 py-2">
-                                            <button 
-                                                onClick={() => handleDeleteUnit(unit.id)}
-                                                className="text-slate-400 hover:text-red-500 transition-colors"
-                                                title="Delete Unit"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                                            {editingUnitId === unit.id ? (
+                                                <div className="flex items-center gap-2">
+                                                    <button 
+                                                        onClick={handleSaveEditUnit}
+                                                        className="text-indigo-600 hover:text-indigo-800 transition-colors text-sm font-medium"
+                                                        title="Save"
+                                                    >
+                                                        Save
+                                                    </button>
+                                                    <button 
+                                                        onClick={handleCancelEditUnit}
+                                                        className="text-slate-400 hover:text-slate-600 transition-colors text-sm"
+                                                        title="Cancel"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2">
+                                                    <button 
+                                                        onClick={() => handleStartEditUnit(unit)}
+                                                        className="text-slate-400 hover:text-indigo-600 transition-colors"
+                                                        title="Edit Unit"
+                                                    >
+                                                        <Pencil className="w-4 h-4" />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleDeleteUnit(unit.id)}
+                                                        className="text-slate-400 hover:text-red-500 transition-colors"
+                                                        title="Delete Unit"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
