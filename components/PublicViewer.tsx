@@ -4,13 +4,15 @@ import { Project, TaskStatus } from '../types';
 import { STATUS_COLORS, STATUS_LABELS } from '../constants';
 import { getTaskKey } from '../services/logic';
 import { fetchProjects } from '../services/supabase';
-import { Check, Play, Clock, Calendar, Loader2 } from 'lucide-react';
+import { generateProjectPDF } from '../services/pdf';
+import { Check, Play, Clock, Calendar, Loader2, FileDown, ZoomIn, ZoomOut } from 'lucide-react';
 
 const PublicViewer: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(100);
 
   useEffect(() => {
     const loadProject = async () => {
@@ -110,17 +112,44 @@ const PublicViewer: React.FC = () => {
         <div className="bg-white shadow-sm rounded-lg border border-slate-200 overflow-hidden flex flex-col h-full">
           <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
             <h2 className="text-lg font-semibold text-slate-800">Interior Unit Matrix</h2>
-            <div className="flex gap-2 text-xs">
-              {Object.entries(STATUS_LABELS).map(([key, label]) => (
-                <div key={key} className="flex items-center gap-1">
-                  <div className={`w-3 h-3 rounded-full ${STATUS_COLORS[key as TaskStatus].split(' ')[0]}`}></div>
-                  <span className="text-slate-600 hidden sm:inline">{label}</span>
-                </div>
-              ))}
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => generateProjectPDF(project)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm"
+              >
+                <FileDown className="w-4 h-4" />
+                Download PDF
+              </button>
+              <div className="flex items-center gap-1 border border-slate-300 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setZoomLevel(z => Math.max(50, z - 10))}
+                  className="p-1.5 hover:bg-slate-100 text-slate-600"
+                  title="Zoom Out"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </button>
+                <span className="text-xs text-slate-600 w-10 text-center">{zoomLevel}%</span>
+                <button
+                  onClick={() => setZoomLevel(z => Math.min(150, z + 10))}
+                  className="p-1.5 hover:bg-slate-100 text-slate-600"
+                  title="Zoom In"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex gap-2 text-xs">
+                {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                  <div key={key} className="flex items-center gap-1">
+                    <div className={`w-3 h-3 rounded-full ${STATUS_COLORS[key as TaskStatus].split(' ')[0]}`}></div>
+                    <span className="text-slate-600 hidden sm:inline">{label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
           <div className="overflow-auto flex-1">
+            <div style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top left', width: `${10000 / zoomLevel}%` }}>
             <table className="min-w-full border-collapse text-sm">
               <thead className="bg-slate-50 sticky top-0 z-40">
                 <tr>
@@ -203,6 +232,7 @@ const PublicViewer: React.FC = () => {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       </main>

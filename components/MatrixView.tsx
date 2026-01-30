@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Project, TaskStatus, Trade, Unit } from '../types';
 import { STATUS_COLORS, STATUS_LABELS } from '../constants';
 import { getTaskKey } from '../services/logic';
-import { Check, Play, Clock, Calendar, GripVertical, ArrowUpDown, CheckSquare, Plus, Trash2, X, Pencil } from 'lucide-react';
+import { Check, Play, Clock, Calendar, GripVertical, ArrowUpDown, CheckSquare, Plus, Trash2, X, Pencil, ZoomIn, ZoomOut } from 'lucide-react';
 
 interface MatrixViewProps {
   project: Project;
@@ -50,6 +50,9 @@ const MatrixView: React.FC<MatrixViewProps> = ({ project, onTaskClick, onReorder
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
   const [editUnitName, setEditUnitName] = useState('');
   const [editUnitBuilding, setEditUnitBuilding] = useState('');
+
+  // Zoom state
+  const [zoomLevel, setZoomLevel] = useState(100); // percentage
 
   // Reset editing name when selected trade changes
   useEffect(() => {
@@ -191,17 +194,37 @@ const MatrixView: React.FC<MatrixViewProps> = ({ project, onTaskClick, onReorder
             )}
         </div>
         
-        <div className="flex gap-2 text-xs">
-            {Object.entries(STATUS_LABELS).map(([key, label]) => (
-                <div key={key} className="flex items-center gap-1">
-                    <div className={`w-3 h-3 rounded-full ${STATUS_COLORS[key as TaskStatus].split(' ')[0]}`}></div>
-                    <span className="text-slate-600 hidden sm:inline">{label}</span>
-                </div>
-            ))}
+        <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1 border border-slate-300 rounded-lg overflow-hidden">
+                <button
+                    onClick={() => setZoomLevel(z => Math.max(50, z - 10))}
+                    className="p-1.5 hover:bg-slate-100 text-slate-600"
+                    title="Zoom Out"
+                >
+                    <ZoomOut className="w-4 h-4" />
+                </button>
+                <span className="text-xs text-slate-600 w-10 text-center">{zoomLevel}%</span>
+                <button
+                    onClick={() => setZoomLevel(z => Math.min(150, z + 10))}
+                    className="p-1.5 hover:bg-slate-100 text-slate-600"
+                    title="Zoom In"
+                >
+                    <ZoomIn className="w-4 h-4" />
+                </button>
+            </div>
+            <div className="flex gap-2 text-xs">
+                {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                    <div key={key} className="flex items-center gap-1">
+                        <div className={`w-3 h-3 rounded-full ${STATUS_COLORS[key as TaskStatus].split(' ')[0]}`}></div>
+                        <span className="text-slate-600 hidden sm:inline">{label}</span>
+                    </div>
+                ))}
+            </div>
         </div>
       </div>
       
       <div className="overflow-auto matrix-scroll flex-1 min-h-0">
+        <div style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top left', width: `${10000 / zoomLevel}%` }}>
         <table className="min-w-full border-collapse text-sm">
           <thead className="bg-slate-50 sticky top-0 z-40">
             <tr>
@@ -375,6 +398,7 @@ const MatrixView: React.FC<MatrixViewProps> = ({ project, onTaskClick, onReorder
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Trade Edit/Delete Modal */}
