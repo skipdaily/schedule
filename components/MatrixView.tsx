@@ -197,7 +197,7 @@ const MatrixView: React.FC<MatrixViewProps> = ({ project, onTaskClick, onReorder
         <div className="flex items-center gap-4">
             <div className="flex items-center gap-1 border border-slate-300 rounded-lg overflow-hidden">
                 <button
-                    onClick={() => setZoomLevel(z => Math.max(50, z - 10))}
+                    onClick={() => setZoomLevel(z => Math.max(10, z - 10))}
                     className="p-1.5 hover:bg-slate-100 text-slate-600"
                     title="Zoom Out"
                 >
@@ -224,8 +224,7 @@ const MatrixView: React.FC<MatrixViewProps> = ({ project, onTaskClick, onReorder
       </div>
       
       <div className="overflow-auto matrix-scroll flex-1 min-h-0">
-        <div style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top left', width: `${10000 / zoomLevel}%` }}>
-        <table className="min-w-full border-collapse text-sm">
+        <table className="min-w-full border-collapse text-sm" style={{ zoom: zoomLevel / 100 }}>
           <thead className="bg-slate-50 sticky top-0 z-40">
             <tr>
               <th className="sticky left-0 z-50 bg-slate-50 p-3 text-left font-semibold text-slate-600 border-b border-r border-slate-200 w-24 min-w-[100px] flex items-center gap-2">
@@ -398,7 +397,6 @@ const MatrixView: React.FC<MatrixViewProps> = ({ project, onTaskClick, onReorder
             ))}
           </tbody>
         </table>
-        </div>
       </div>
 
       {/* Trade Edit/Delete Modal */}
