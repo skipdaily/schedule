@@ -37,6 +37,14 @@ export interface Task {
   lastUpdated: string;
 }
 
+export interface Attachment {
+  id: string;
+  name: string;
+  type: 'image' | 'pdf';
+  dataUrl: string; // Base64 data URL
+  addedAt: string; // ISO date
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -47,6 +55,7 @@ export interface Project {
   units: Unit[];
   areas: Area[];
   tasks: Record<string, Task>; // Key is `${unitId}_${tradeId}`
+  attachments?: Attachment[]; // Photos and PDFs
 }
 
 export interface ViewMode {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Project, ViewMode, TaskStatus, Unit, Trade } from './types';
+import { Project, ViewMode, TaskStatus, Unit, Trade, Attachment } from './types';
 import { updateReadinessState, getTaskKey, pushLinkedTasks, ensureWeekday } from './services/logic';
 import { generateProjectPDF } from './services/pdf';
 import { exportProjectToCSV, importProjectFromCSV, downloadTemplateCSV } from './services/csv';
@@ -8,7 +8,7 @@ import Dashboard from './components/Dashboard';
 import MatrixView from './components/MatrixView';
 import ProjectSetup from './components/ProjectSetup';
 import EditProjectModal from './components/EditProjectModal';
-import { LayoutDashboard, Grid3X3, Plus, ArrowLeft, XCircle, Play, CheckCircle, Settings, Download, FolderOpen, Trash2, Upload, FileDown, Link2, Unlink, Share2 } from 'lucide-react';
+import { LayoutDashboard, Grid3X3, Plus, ArrowLeft, XCircle, Play, CheckCircle, Settings, Download, FolderOpen, Trash2, Upload, FileDown, Link2, Unlink, Share2, Image, FileText, X } from 'lucide-react';
 
 const LEGACY_STORAGE_KEY = 'flowstate_projects_v1';
 
@@ -36,6 +36,9 @@ const App: React.FC = () => {
   // Linking mode state
   const [isLinkingMode, setIsLinkingMode] = useState(false);
   const [linkingFromTask, setLinkingFromTask] = useState<{unitId: string, tradeId: string} | null>(null);
+  
+  // Attachment upload ref
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
 
   // Derived current project
   const project = projects.find(p => p.id === currentProjectId) || null;
@@ -328,6 +331,57 @@ const App: React.FC = () => {
     if (project) {
         generateProjectPDF(project);
     }
+  };
+
+  // Attachment handlers
+  const handleAttachmentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!project || !e.target.files) return;
+    
+    const files = Array.from(e.target.files);
+    
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        const isImage = file.type.startsWith('image/');
+        const isPdf = file.type === 'application/pdf';
+        
+        if (!isImage && !isPdf) {
+          alert('Please upload only images or PDF files');
+          return;
+        }
+        
+        const newAttachment: Attachment = {
+          id: `att_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          name: file.name,
+          type: isImage ? 'image' : 'pdf',
+          dataUrl,
+          addedAt: new Date().toISOString()
+        };
+        
+        const updatedProject = {
+          ...project,
+          attachments: [...(project.attachments || []), newAttachment]
+        };
+        
+        updateCurrentProject(updatedProject);
+      };
+      reader.readAsDataURL(file);
+    });
+    
+    // Reset input
+    e.target.value = '';
+  };
+
+  const handleDeleteAttachment = (attachmentId: string) => {
+    if (!project) return;
+    
+    const updatedProject = {
+      ...project,
+      attachments: (project.attachments || []).filter(a => a.id !== attachmentId)
+    };
+    
+    updateCurrentProject(updatedProject);
   };
 
   const handleTaskClick = (unitId: string, tradeId: string) => {
@@ -813,7 +867,68 @@ const App: React.FC = () => {
           <>
             {view === 'setup' && <ProjectSetup onSave={handleCreateProject} onCancel={() => setView('dashboard')} />}
             {view === 'dashboard' && <Dashboard project={project} onTaskClick={handleTaskClick} />}
-            {view === 'matrix' && <MatrixView project={project} onTaskClick={handleTaskClick} onReorderUnits={handleReorderUnits} onReorderTrades={handleReorderTrades} onDeleteTrade={handleDeleteTrade} onAddTrade={handleAddTrade} onEditTrade={handleEditTrade} onAddUnit={handleAddUnit} onEditUnit={handleEditUnit} onDeleteUnit={handleDeleteUnit} isLinkingMode={isLinkingMode} linkingFromTask={linkingFromTask} onCancelLinking={cancelLinkingMode} />}
+            {view === 'matrix' && (
+              <>
+                <MatrixView project={project} onTaskClick={handleTaskClick} onReorderUnits={handleReorderUnits} onReorderTrades={handleReorderTrades} onDeleteTrade={handleDeleteTrade} onAddTrade={handleAddTrade} onEditTrade={handleEditTrade} onAddUnit={handleAddUnit} onEditUnit={handleEditUnit} onDeleteUnit={handleDeleteUnit} isLinkingMode={isLinkingMode} linkingFromTask={linkingFromTask} onCancelLinking={cancelLinkingMode} />
+                
+                {/* Attachments Section */}
+                <div className="bg-white shadow-sm rounded-lg border border-slate-200 p-4 mt-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-slate-800">Attachments</h3>
+                    <div>
+                      <input
+                        ref={attachmentInputRef}
+                        type="file"
+                        accept="image/*,application/pdf"
+                        multiple
+                        onChange={handleAttachmentUpload}
+                        className="hidden"
+                      />
+                      <button
+                        onClick={() => attachmentInputRef.current?.click()}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm"
+                      >
+                        <Upload className="w-4 h-4" />
+                        Upload Photo/PDF
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {(!project?.attachments || project.attachments.length === 0) ? (
+                    <p className="text-slate-500 text-sm">No attachments yet. Upload photos or PDFs to include them in reports.</p>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {project.attachments.map(attachment => (
+                        <div key={attachment.id} className="relative group border border-slate-200 rounded-lg overflow-hidden">
+                          {attachment.type === 'image' ? (
+                            <img 
+                              src={attachment.dataUrl} 
+                              alt={attachment.name}
+                              className="w-full h-40 object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-40 bg-slate-100 flex flex-col items-center justify-center">
+                              <FileText className="w-12 h-12 text-slate-400 mb-2" />
+                              <span className="text-xs text-slate-600 px-2 text-center truncate w-full">{attachment.name}</span>
+                            </div>
+                          )}
+                          <button
+                            onClick={() => handleDeleteAttachment(attachment.id)}
+                            className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                            title="Delete attachment"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                          <div className="p-2 bg-white border-t border-slate-200">
+                            <p className="text-xs text-slate-600 truncate" title={attachment.name}>{attachment.name}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </>
         )}
       </main>

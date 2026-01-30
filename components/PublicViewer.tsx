@@ -5,7 +5,7 @@ import { STATUS_COLORS, STATUS_LABELS } from '../constants';
 import { getTaskKey } from '../services/logic';
 import { fetchProjects } from '../services/supabase';
 import { generateProjectPDF } from '../services/pdf';
-import { Check, Play, Clock, Calendar, Loader2, FileDown, ZoomIn, ZoomOut } from 'lucide-react';
+import { Check, Play, Clock, Calendar, Loader2, FileDown, ZoomIn, ZoomOut, FileText } from 'lucide-react';
 
 const PublicViewer: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -233,6 +233,34 @@ const PublicViewer: React.FC = () => {
             </table>
           </div>
         </div>
+
+        {/* Attachments Section */}
+        {project.attachments && project.attachments.length > 0 && (
+          <div className="bg-white shadow-sm rounded-lg border border-slate-200 p-4 mt-4">
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">Attachments</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {project.attachments.map(attachment => (
+                <div key={attachment.id} className="border border-slate-200 rounded-lg overflow-hidden">
+                  {attachment.type === 'image' ? (
+                    <img 
+                      src={attachment.dataUrl} 
+                      alt={attachment.name}
+                      className="w-full h-40 object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-40 bg-slate-100 flex flex-col items-center justify-center">
+                      <FileText className="w-12 h-12 text-slate-400 mb-2" />
+                      <span className="text-xs text-slate-600 px-2 text-center truncate w-full">{attachment.name}</span>
+                    </div>
+                  )}
+                  <div className="p-2 bg-white border-t border-slate-200">
+                    <p className="text-xs text-slate-600 truncate" title={attachment.name}>{attachment.name}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
