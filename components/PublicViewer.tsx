@@ -31,13 +31,47 @@ const PublicViewer: React.FC = () => {
     loadProject();
   }, [projectId]);
 
-  const renderIcon = (status: TaskStatus, className = "w-4 h-4") => {
-    switch (status) {
-      case 'complete': return <Check className={className} />;
-      case 'ready': return <Play className={className} />;
-      case 'in-progress': return <Clock className={className} />;
-      default: return null;
+  const getCellText = (task?: { status: TaskStatus; expectedStartDate?: string; completedDate?: string; percentComplete?: number }) => {
+    if (!task) return '';
+
+    // Expected Start Date formatting to M/D
+    let startStr = '';
+    if (task.expectedStartDate) {
+      const parts = task.expectedStartDate.split('-');
+      if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10);
+        const d = parseInt(parts[2], 10);
+        const dateObj = new Date(y, m - 1, d);
+        startStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
+      }
     }
+
+    if (task.status === 'complete') {
+      if (task.completedDate) {
+        const d = new Date(task.completedDate);
+        return `Done ${d.getMonth() + 1}/${d.getDate()}`;
+      }
+      return 'DONE';
+    }
+
+    if (task.status === 'in-progress') {
+      let text = `Work ${task.percentComplete || 0}%`;
+      if (startStr) text += `\nEst: ${startStr}`;
+      return text;
+    }
+
+    if (task.status === 'ready') {
+      let text = 'READY';
+      if (startStr) text += `\nEst: ${startStr}`;
+      return text;
+    }
+
+    if (task.status === 'not-started') {
+      if (startStr) return `Est: ${startStr}`;
+    }
+
+    return '';
   };
 
   const formatDate = (dateStr?: string) => {
@@ -105,88 +139,49 @@ const PublicViewer: React.FC = () => {
       {/* Matrix View */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 w-full">
         <div className="border border-slate-200 overflow-auto">
-          <table className="min-w-full border-collapse text-sm">
-              <thead className="bg-slate-50 sticky top-0 z-40">
-                <tr>
-                  <th className="sticky left-0 z-50 bg-slate-50 p-3 text-left font-semibold text-slate-600 border-b border-r border-slate-200 w-24 min-w-[100px]">
-                    Unit
+          <table className="min-w-full border-collapse text-[10px]">
+            <thead className="bg-slate-50 sticky top-0 z-40">
+              <tr>
+                <th className="sticky left-0 z-50 bg-slate-50 p-3 text-left font-semibold text-slate-600 border-b border-r border-slate-200 w-24 min-w-[100px]">
+                  Unit
+                </th>
+                {interiorTrades.map((trade) => (
+                  <th
+                    key={trade.id}
+                    className="p-2 text-center font-medium text-slate-600 border-b border-slate-200 min-w-[90px] whitespace-nowrap bg-slate-50"
+                  >
+                    {trade.name}
                   </th>
-                  {interiorTrades.map((trade) => (
-                    <th
-                      key={trade.id}
-                      className="p-2 text-center font-medium text-slate-600 border-b border-slate-200 min-w-[120px] whitespace-nowrap bg-slate-50"
-                    >
-                      {trade.name}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {interiorUnits.map((unit) => (
-                  <tr key={unit.id}>
-                    <td className="sticky left-0 z-20 bg-white p-3 font-medium text-slate-700 border-b border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]">
-                      {unit.name}
-                    </td>
-                    {interiorTrades.map((trade) => {
-                      const key = getTaskKey(unit.id, trade.id);
-                      const task = project.tasks[key];
-                      const status = task ? task.status : 'not-started';
-                      const dateStr = task?.expectedStartDate || task?.completionDate;
-                      const dateInfo = formatDate(dateStr);
-                      const percent = task?.percentComplete || 0;
-
-                      return (
-                        <td
-                          key={trade.id}
-                          className="p-1 border-b border-slate-100 h-20 min-h-[80px]"
-                        >
-                          <div className={`w-full h-full rounded flex flex-col items-center justify-center transition-all ${STATUS_COLORS[status]} relative overflow-hidden`}>
-                            {dateInfo ? (
-                              <div className="flex flex-col items-center justify-center w-full h-full p-1 relative z-10">
-                                <span className="text-[10px] uppercase font-bold tracking-wider opacity-80 mb-0.5">
-                                  {dateInfo.weekday}
-                                </span>
-                                <span className="text-lg font-extrabold leading-none">
-                                  {dateInfo.formattedDate}
-                                </span>
-                                {status === 'in-progress' && percent > 0 && (
-                                  <div className="absolute top-1 left-1 text-[10px] font-bold opacity-75">
-                                    {percent}%
-                                  </div>
-                                )}
-                                <div className="absolute bottom-1 right-1 opacity-50 scale-75">
-                                  {renderIcon(status, "w-4 h-4")}
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="flex flex-col items-center justify-center relative z-10">
-                                <div className="flex items-center gap-1.5">
-                                  {renderIcon(status)}
-                                  <span className="text-xs font-medium hidden md:inline">
-                                    {status === 'not-started' ? '' : STATUS_LABELS[status]}
-                                  </span>
-                                </div>
-                                {status === 'in-progress' && percent > 0 && (
-                                  <span className="text-[10px] font-bold opacity-80 mt-0.5">
-                                    {percent}%
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                            {status === 'in-progress' && percent > 0 && (
-                              <div
-                                className="absolute bottom-0 left-0 h-1.5 bg-amber-500/60 transition-all"
-                                style={{ width: `${percent}%` }}
-                              />
-                            )}
-                          </div>
-                        </td>
-                      );
-                    })}
-                  </tr>
                 ))}
-              </tbody>
-            </table>
+              </tr>
+            </thead>
+            <tbody>
+              {interiorUnits.map((unit) => (
+                <tr key={unit.id}>
+                  <td className="sticky left-0 z-20 bg-white p-3 font-medium text-slate-700 border-b border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]">
+                    {unit.name}
+                  </td>
+                  {interiorTrades.map((trade) => {
+                    const key = getTaskKey(unit.id, trade.id);
+                    const task = project.tasks[key];
+                    const status = task ? task.status : 'not-started';
+                    const cellText = getCellText(task || undefined);
+
+                    return (
+                      <td
+                        key={trade.id}
+                        className="p-2 border-b border-slate-200 text-center align-middle whitespace-pre-line text-[10px] leading-tight"
+                      >
+                        <div className={`w-full h-full ${STATUS_COLORS[status]} rounded-sm px-1 py-1`}>
+                          {cellText}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         {/* Attachments Section */}
