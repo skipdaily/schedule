@@ -121,17 +121,17 @@ const PublicViewer: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">{project.name}</h1>
-            <p className="text-slate-500">Address: {project.address || ''}</p>
+            <h1 className="text-2xl font-bold text-slate-900">{project.name}</h1>
+            <p className="text-slate-900">Address: {project.address || ''}</p>
             {project.projectedCompletionDate && (
-              <p className="text-sm text-slate-500 mt-1">
+              <p className="text-sm text-slate-900 mt-1">
                 Target Completion: {new Date(project.projectedCompletionDate).toLocaleDateString()}
               </p>
             )}
           </div>
-          <div className="text-sm text-slate-500">Generated: {new Date().toLocaleDateString()}</div>
+          <div className="text-sm text-slate-900">Generated: {new Date().toLocaleDateString()}</div>
         </div>
-        <div className="mt-4 text-sm text-slate-700">
+        <div className="mt-4 text-sm text-slate-900">
           Overall Progress: {percent}% &nbsp; | &nbsp; Ready: {ready} &nbsp; | &nbsp; In Progress: {progress} &nbsp; | &nbsp; Complete: {done}
         </div>
       </div>
@@ -142,13 +142,13 @@ const PublicViewer: React.FC = () => {
           <table className="min-w-full border-collapse text-[10px]">
             <thead className="bg-slate-50 sticky top-0 z-40">
               <tr>
-                <th className="sticky left-0 z-50 bg-slate-50 p-3 text-left font-semibold text-slate-600 border-b border-r border-slate-200 w-24 min-w-[100px]">
+                <th className="sticky left-0 z-50 bg-slate-50 p-3 text-left font-semibold text-slate-900 border border-slate-200 w-24 min-w-[100px]">
                   Unit
                 </th>
                 {interiorTrades.map((trade) => (
                   <th
                     key={trade.id}
-                    className="p-2 text-center font-medium text-slate-600 border-b border-slate-200 min-w-[90px] whitespace-nowrap bg-slate-50"
+                    className="p-2 text-center font-medium text-slate-900 border border-slate-200 min-w-[90px] whitespace-nowrap bg-slate-50"
                   >
                     {trade.name}
                   </th>
@@ -158,7 +158,7 @@ const PublicViewer: React.FC = () => {
             <tbody>
               {interiorUnits.map((unit) => (
                 <tr key={unit.id}>
-                  <td className="sticky left-0 z-20 bg-white p-3 font-medium text-slate-700 border-b border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]">
+                  <td className="sticky left-0 z-20 bg-white p-3 font-medium text-slate-900 border border-slate-200">
                     {unit.name}
                   </td>
                   {interiorTrades.map((trade) => {
@@ -170,9 +170,9 @@ const PublicViewer: React.FC = () => {
                     return (
                       <td
                         key={trade.id}
-                        className="p-2 border-b border-slate-200 text-center align-middle whitespace-pre-line text-[10px] leading-tight"
+                        className="p-2 border border-slate-200 text-center align-middle whitespace-pre-line text-[10px] leading-tight text-slate-900"
                       >
-                        <div className={`w-full h-full ${STATUS_COLORS[status]} rounded-sm px-1 py-1`}>
+                        <div className={`w-full h-full ${STATUS_COLORS[status]} rounded-sm px-1 py-1 text-slate-900`}>
                           {cellText}
                         </div>
                       </td>
@@ -187,7 +187,7 @@ const PublicViewer: React.FC = () => {
         {/* Attachments Section */}
         {project.attachments && project.attachments.length > 0 && (
           <div className="border border-slate-200 p-4 mt-6">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">Attachments</h3>
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">Attachments</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {project.attachments.map(attachment => (
                 <div key={attachment.id} className="border border-slate-200 rounded-lg overflow-hidden">
@@ -199,12 +199,12 @@ const PublicViewer: React.FC = () => {
                     />
                   ) : (
                     <div className="w-full h-40 bg-slate-100 flex flex-col items-center justify-center">
-                      <FileText className="w-12 h-12 text-slate-400 mb-2" />
-                      <span className="text-xs text-slate-600 px-2 text-center truncate w-full">{attachment.name}</span>
+                      <FileText className="w-12 h-12 text-slate-500 mb-2" />
+                      <span className="text-xs text-slate-900 px-2 text-center truncate w-full">{attachment.name}</span>
                     </div>
                   )}
                   <div className="p-2 bg-white border-t border-slate-200">
-                    <p className="text-xs text-slate-600 truncate" title={attachment.name}>{attachment.name}</p>
+                    <p className="text-xs text-slate-900 truncate" title={attachment.name}>{attachment.name}</p>
                   </div>
                 </div>
               ))}
