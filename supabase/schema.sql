@@ -1,4 +1,4 @@
--- FlowState Supabase schema
+-- Sheduler Supabase schema
 
 CREATE TABLE IF NOT EXISTS projects (
   id text PRIMARY KEY,

@@ -6,7 +6,7 @@ import { getTaskKey } from './logic';
  */
 export const exportProjectToCSV = (project: Project): void => {
   // Create metadata section
-  let csv = 'FLOWSTATE PROJECT EXPORT\n';
+  let csv = 'SHEDULER PROJECT EXPORT\n';
   csv += `Project Name,${escapeCSV(project.name)}\n`;
   csv += `Address,${escapeCSV(project.address)}\n`;
   csv += `Projected Completion,${project.projectedCompletionDate || ''}\n`;
@@ -163,7 +163,7 @@ const parseCSVToProject = (csvText: string): Project => {
     
     // Detect sections (case insensitive and handle variations)
     const upperLine = line.toUpperCase();
-    if (upperLine.includes('FLOWSTATE PROJECT EXPORT') || upperLine.includes('PROJECT EXPORT')) {
+    if (upperLine.includes('SHEDULER PROJECT EXPORT') || upperLine.includes('PROJECT EXPORT')) {
       section = 'metadata';
       continue;
     }
@@ -491,7 +491,7 @@ const escapeCSV = (value: string): string => {
  * Generate a template CSV for creating a new project
  */
 export const downloadTemplateCSV = (): void => {
-  const template = `FLOWSTATE PROJECT EXPORT
+  const template = `SHEDULER PROJECT EXPORT
 Project Name,My New Project
 Address,123 Main Street
 Projected Completion,2026-12-31
@@ -527,7 +527,7 @@ Bldg 1 North Elev,Bldg 1,exterior
   const link = document.createElement('a');
   const url = URL.createObjectURL(blob);
   link.setAttribute('href', url);
-  link.setAttribute('download', 'flowstate_project_template.csv');
+  link.setAttribute('download', 'sheduler_project_template.csv');
   link.style.visibility = 'hidden';
   document.body.appendChild(link);
   link.click();

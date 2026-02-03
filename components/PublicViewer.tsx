@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Project, TaskStatus } from '../types';
+import { Project, TaskStatus, Task } from '../types';
 import { STATUS_COLORS, STATUS_LABELS } from '../constants';
 import { getTaskKey } from '../services/logic';
 import { fetchProjects } from '../services/supabase';
-import { generateProjectPDF } from '../services/pdf';
-import { Check, Play, Clock, Calendar, Loader2, FileDown, ZoomIn, ZoomOut, FileText } from 'lucide-react';
+import { Check, Play, Clock, Calendar, Loader2, FileText } from 'lucide-react';
 
 const PublicViewer: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [zoomLevel, setZoomLevel] = useState(100);
 
   useEffect(() => {
     const loadProject = async () => {
@@ -76,80 +74,38 @@ const PublicViewer: React.FC = () => {
 
   const interiorTrades = project.trades.filter(t => t.scope === 'interior');
   const interiorUnits = project.units;
+  const tasks = Object.values(project.tasks) as Task[];
+  const ready = tasks.filter(t => t.status === 'ready').length;
+  const progress = tasks.filter(t => t.status === 'in-progress').length;
+  const done = tasks.filter(t => t.status === 'complete').length;
+  const total = tasks.length;
+  const percent = total > 0 ? Math.round((done / total) * 100) : 0;
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
-      {/* Header */}
-      <nav className="bg-slate-900 text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center font-bold text-lg">F</div>
-              <span className="font-bold text-xl tracking-tight">FlowState</span>
-            </div>
-            <div className="text-slate-300 text-sm">
-              View Only
-            </div>
-          </div>
-        </div>
-      </nav>
-
+    <div className="min-h-screen bg-white">
       {/* Project Info */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 w-full">
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mb-4">
-          <h1 className="text-2xl font-bold text-slate-800">{project.name}</h1>
-          {project.address && <p className="text-slate-500">{project.address}</p>}
-          {project.projectedCompletionDate && (
-            <p className="text-sm text-slate-500 mt-1">
-              Target Completion: {new Date(project.projectedCompletionDate).toLocaleDateString()}
-            </p>
-          )}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full">
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">{project.name}</h1>
+            <p className="text-slate-500">Address: {project.address || ''}</p>
+            {project.projectedCompletionDate && (
+              <p className="text-sm text-slate-500 mt-1">
+                Target Completion: {new Date(project.projectedCompletionDate).toLocaleDateString()}
+              </p>
+            )}
+          </div>
+          <div className="text-sm text-slate-500">Generated: {new Date().toLocaleDateString()}</div>
+        </div>
+        <div className="mt-4 text-sm text-slate-700">
+          Overall Progress: {percent}% &nbsp; | &nbsp; Ready: {ready} &nbsp; | &nbsp; In Progress: {progress} &nbsp; | &nbsp; Complete: {done}
         </div>
       </div>
 
       {/* Matrix View */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6 w-full">
-        <div className="bg-white shadow-sm rounded-lg border border-slate-200 overflow-hidden flex flex-col h-full">
-          <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-            <h2 className="text-lg font-semibold text-slate-800">Interior Unit Matrix</h2>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => generateProjectPDF(project)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm"
-              >
-                <FileDown className="w-4 h-4" />
-                Download PDF
-              </button>
-              <div className="flex items-center gap-1 border border-slate-300 rounded-lg overflow-hidden">
-                <button
-                  onClick={() => setZoomLevel(z => Math.max(10, z - 10))}
-                  className="p-1.5 hover:bg-slate-100 text-slate-600"
-                  title="Zoom Out"
-                >
-                  <ZoomOut className="w-4 h-4" />
-                </button>
-                <span className="text-xs text-slate-600 w-10 text-center">{zoomLevel}%</span>
-                <button
-                  onClick={() => setZoomLevel(z => Math.min(150, z + 10))}
-                  className="p-1.5 hover:bg-slate-100 text-slate-600"
-                  title="Zoom In"
-                >
-                  <ZoomIn className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="flex gap-2 text-xs">
-                {Object.entries(STATUS_LABELS).map(([key, label]) => (
-                  <div key={key} className="flex items-center gap-1">
-                    <div className={`w-3 h-3 rounded-full ${STATUS_COLORS[key as TaskStatus].split(' ')[0]}`}></div>
-                    <span className="text-slate-600 hidden sm:inline">{label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="overflow-auto flex-1">
-            <table className="min-w-full border-collapse text-sm" style={{ zoom: zoomLevel / 100 }}>
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 w-full">
+        <div className="border border-slate-200 overflow-auto">
+          <table className="min-w-full border-collapse text-sm">
               <thead className="bg-slate-50 sticky top-0 z-40">
                 <tr>
                   <th className="sticky left-0 z-50 bg-slate-50 p-3 text-left font-semibold text-slate-600 border-b border-r border-slate-200 w-24 min-w-[100px]">
@@ -167,8 +123,8 @@ const PublicViewer: React.FC = () => {
               </thead>
               <tbody>
                 {interiorUnits.map((unit) => (
-                  <tr key={unit.id} className="hover:bg-slate-50">
-                    <td className="sticky left-0 z-20 bg-white p-3 font-medium text-slate-700 border-b border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                  <tr key={unit.id}>
+                    <td className="sticky left-0 z-20 bg-white p-3 font-medium text-slate-700 border-b border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]">
                       {unit.name}
                     </td>
                     {interiorTrades.map((trade) => {
@@ -231,12 +187,11 @@ const PublicViewer: React.FC = () => {
                 ))}
               </tbody>
             </table>
-          </div>
         </div>
 
         {/* Attachments Section */}
         {project.attachments && project.attachments.length > 0 && (
-          <div className="bg-white shadow-sm rounded-lg border border-slate-200 p-4 mt-4">
+          <div className="border border-slate-200 p-4 mt-6">
             <h3 className="text-lg font-semibold text-slate-800 mb-4">Attachments</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {project.attachments.map(attachment => (

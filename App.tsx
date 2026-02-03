@@ -10,7 +10,7 @@ import ProjectSetup from './components/ProjectSetup';
 import EditProjectModal from './components/EditProjectModal';
 import { LayoutDashboard, Grid3X3, Plus, ArrowLeft, XCircle, Play, CheckCircle, Settings, Download, FolderOpen, Trash2, Upload, FileDown, Link2, Unlink, Share2, Image, FileText, X } from 'lucide-react';
 
-const LEGACY_STORAGE_KEY = 'flowstate_projects_v1';
+const LEGACY_STORAGE_KEY = 'sheduler_projects_v1';
 
 const App: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -752,7 +752,7 @@ const App: React.FC = () => {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-2">
                <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center font-bold text-lg">F</div>
-               <span className="font-bold text-xl tracking-tight hidden sm:block">FlowState</span>
+               <span className="font-bold text-xl tracking-tight hidden sm:block">Schedule</span>
             </div>
             
             {project && (
@@ -856,7 +856,7 @@ const App: React.FC = () => {
         {!project && view !== 'setup' ? (
            <div className="flex flex-col items-center justify-center h-[80vh] text-center space-y-6">
                 <div className="bg-white p-10 rounded-2xl shadow-xl border border-slate-200 max-w-lg">
-                    <h1 className="text-3xl font-bold text-slate-900 mb-2">Welcome to FlowState</h1>
+                    <h1 className="text-3xl font-bold text-slate-900 mb-2">Welcome to your schedule</h1>
                     <p className="text-slate-600 mb-8">
                         The unit-driven scheduling system for modern superintendents. 
                         Stop guessing dates. Start managing flow.
