@@ -4,13 +4,15 @@ import { Project, TaskStatus, Task } from '../types';
 import { STATUS_COLORS, STATUS_LABELS } from '../constants';
 import { getTaskKey } from '../services/logic';
 import { fetchProjects } from '../services/supabase';
-import { Check, Play, Clock, Calendar, Loader2, FileText } from 'lucide-react';
+import { generateProjectPDF } from '../services/pdf';
+import { Check, Play, Clock, Calendar, Loader2, FileDown, ZoomIn, ZoomOut, FileText } from 'lucide-react';
 
 const PublicViewer: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(100);
 
   useEffect(() => {
     const loadProject = async () => {
@@ -109,11 +111,6 @@ const PublicViewer: React.FC = () => {
   const interiorTrades = project.trades.filter(t => t.scope === 'interior');
   const interiorUnits = project.units;
   const tasks = Object.values(project.tasks) as Task[];
-  const ready = tasks.filter(t => t.status === 'ready').length;
-  const progress = tasks.filter(t => t.status === 'in-progress').length;
-  const done = tasks.filter(t => t.status === 'complete').length;
-  const total = tasks.length;
-  const percent = total > 0 ? Math.round((done / total) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-white">
@@ -131,15 +128,38 @@ const PublicViewer: React.FC = () => {
           </div>
           <div className="text-sm text-slate-900">Generated: {new Date().toLocaleDateString()}</div>
         </div>
-        <div className="mt-4 text-sm text-slate-900">
-          Overall Progress: {percent}% &nbsp; | &nbsp; Ready: {ready} &nbsp; | &nbsp; In Progress: {progress} &nbsp; | &nbsp; Complete: {done}
+        <div className="mt-4 flex items-center gap-3">
+          <button
+            onClick={() => generateProjectPDF(project)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm"
+          >
+            <FileDown className="w-4 h-4" />
+            Download PDF
+          </button>
+          <div className="flex items-center gap-1 border border-slate-300 rounded-lg overflow-hidden">
+            <button
+              onClick={() => setZoomLevel(z => Math.max(10, z - 10))}
+              className="p-1.5 hover:bg-slate-100 text-slate-700"
+              title="Zoom Out"
+            >
+              <ZoomOut className="w-4 h-4" />
+            </button>
+            <span className="text-xs text-slate-900 w-10 text-center">{zoomLevel}%</span>
+            <button
+              onClick={() => setZoomLevel(z => Math.min(150, z + 10))}
+              className="p-1.5 hover:bg-slate-100 text-slate-700"
+              title="Zoom In"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Matrix View */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 w-full">
         <div className="border border-slate-200 overflow-auto">
-          <table className="min-w-full border-collapse text-[10px]">
+          <table className="min-w-full border-collapse text-[10px]" style={{ zoom: zoomLevel / 100 }}>
             <thead className="bg-slate-50 sticky top-0 z-40">
               <tr>
                 <th className="sticky left-0 z-50 bg-slate-50 p-3 text-left font-semibold text-slate-900 border border-slate-200 w-24 min-w-[100px]">
