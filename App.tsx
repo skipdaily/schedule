@@ -8,7 +8,7 @@ import Dashboard from './components/Dashboard';
 import MatrixView from './components/MatrixView';
 import ProjectSetup from './components/ProjectSetup';
 import EditProjectModal from './components/EditProjectModal';
-import { LayoutDashboard, Grid3X3, Plus, ArrowLeft, XCircle, Play, CheckCircle, Settings, Download, FolderOpen, Trash2, Upload, FileDown, Link2, Unlink, Share2, Image, FileText, X } from 'lucide-react';
+import { LayoutDashboard, Grid3X3, Plus, ArrowLeft, XCircle, Play, CheckCircle, Settings, Download, FolderOpen, Trash2, Upload, FileDown, Link2, Unlink, Share2, Image, FileText, X, ToggleLeft, ToggleRight } from 'lucide-react';
 
 const LEGACY_STORAGE_KEY = 'sheduler_projects_v1';
 
@@ -36,6 +36,9 @@ const App: React.FC = () => {
   // Linking mode state
   const [isLinkingMode, setIsLinkingMode] = useState(false);
   const [linkingFromTask, setLinkingFromTask] = useState<{unitId: string, tradeId: string} | null>(null);
+  
+  // Push dates toggle (controls whether date changes cascade to linked tasks)
+  const [pushDatesEnabled, setPushDatesEnabled] = useState(true);
   
   // Attachment upload ref
   const attachmentInputRef = useRef<HTMLInputElement>(null);
@@ -424,6 +427,7 @@ const App: React.FC = () => {
     setExpectedDate(task?.expectedStartDate || '');
     setPercentComplete(task?.percentComplete || 0);
     setCompletionDate(task?.completedDate?.split('T')[0] || '');
+    setPushDatesEnabled(!task?.pushDatesDisabled); // Load saved toggle state (default ON)
   };
 
   const startLinkingMode = () => {
@@ -502,8 +506,8 @@ const App: React.FC = () => {
     // Check if date changed and needs to push linked tasks
     let newTasks = { ...project.tasks };
     
-    if (expectedDate && expectedDate !== currentTask.expectedStartDate) {
-      // Push linked tasks when date changes
+    if (pushDatesEnabled && expectedDate && expectedDate !== currentTask.expectedStartDate) {
+      // Push linked tasks when date changes (only if toggle is enabled)
       newTasks = pushLinkedTasks(
         project,
         selectedTask.unitId,
@@ -518,6 +522,7 @@ const App: React.FC = () => {
       ...newTasks[key],
       expectedStartDate: expectedDate || undefined,
       percentComplete: percentComplete,
+      pushDatesDisabled: !pushDatesEnabled, // Save toggle state
       lastUpdated: new Date().toISOString()
     };
     
@@ -554,11 +559,26 @@ const App: React.FC = () => {
 
     const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
       if ((e.target as HTMLElement).closest('button, input')) return;
+      
+      // Get the actual modal element position
+      const modalEl = (e.target as HTMLElement).closest('.bg-white.rounded-xl') as HTMLElement;
+      if (!modalEl) return;
+      
+      const rect = modalEl.getBoundingClientRect();
+      
       setIsDragging(true);
       setDragOffset({
-        x: e.clientX - modalPosition.x,
-        y: e.clientY - modalPosition.y
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
       });
+      
+      // Set initial position to actual position if not already dragged
+      if (modalPosition.x === 0 && modalPosition.y === 0) {
+        setModalPosition({
+          x: rect.left,
+          y: rect.top
+        });
+      }
     };
 
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -582,12 +602,11 @@ const App: React.FC = () => {
         >
             <div 
               className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in absolute max-h-[calc(100vh-100px)] flex flex-col"
-              style={{ 
-                right: modalPosition.x === 0 ? '20px' : 'auto',
-                top: modalPosition.y === 0 ? '80px' : 'auto',
-                left: modalPosition.x !== 0 ? modalPosition.x : 'auto',
-                transform: modalPosition.y !== 0 ? `translateY(${modalPosition.y}px)` : 'none'
-              }}
+              style={ 
+                modalPosition.x === 0 && modalPosition.y === 0
+                  ? { right: '20px', top: '80px' }
+                  : { left: modalPosition.x, top: modalPosition.y }
+              }
             >
                 <div 
                   className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center cursor-move flex-shrink-0"
@@ -643,12 +662,43 @@ const App: React.FC = () => {
                              />
                         </div>
 
-                        <button 
-                            onClick={saveDetails}
-                            className="w-full py-2 bg-slate-100 text-slate-700 font-medium rounded-lg hover:bg-slate-200 border border-slate-200"
+                        {/* Push Dates Toggle */}
+                        <button
+                            onClick={() => setPushDatesEnabled(!pushDatesEnabled)}
+                            className={`flex items-center gap-2 w-full p-2 rounded-lg border transition-colors ${
+                                pushDatesEnabled 
+                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
+                                    : 'bg-slate-50 border-slate-200 text-slate-500'
+                            }`}
                         >
-                            Save Details
+                            {pushDatesEnabled ? (
+                                <ToggleRight className="w-5 h-5 text-emerald-600" />
+                            ) : (
+                                <ToggleLeft className="w-5 h-5 text-slate-400" />
+                            )}
+                            <span className="text-sm font-medium">
+                                Push dates to linked tasks: {pushDatesEnabled ? 'ON' : 'OFF'}
+                            </span>
                         </button>
+
+                        {(() => {
+                            const hasChanges = 
+                                expectedDate !== (task.expectedStartDate || '') ||
+                                percentComplete !== (task.percentComplete || 0) ||
+                                pushDatesEnabled !== !task.pushDatesDisabled;
+                            return (
+                                <button 
+                                    onClick={saveDetails}
+                                    className={`w-full py-2 font-medium rounded-lg border transition-all ${
+                                        hasChanges 
+                                            ? 'bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-md' 
+                                            : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                                    }`}
+                                >
+                                    {hasChanges ? '💾 Save Details' : 'Save Details'}
+                                </button>
+                            );
+                        })()}
                     </div>
 
                     <div className="flex flex-col gap-3 pt-4 border-t border-slate-100">

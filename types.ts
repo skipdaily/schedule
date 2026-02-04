@@ -34,6 +34,7 @@ export interface Task {
   completedDate?: string; // ISO Date string
   percentComplete?: number; // 0-100
   linkedToTaskKey?: string; // Custom link to another task (unitId_tradeId)
+  pushDatesDisabled?: boolean; // When true, date changes won't push to linked tasks
   lastUpdated: string;
 }
 
