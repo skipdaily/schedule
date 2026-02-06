@@ -69,10 +69,15 @@ export const uploadAttachment = async (
   projectId: string,
   file: File
 ): Promise<{ url: string; path: string } | null> => {
-  if (!supabase) return null;
+  if (!supabase) {
+    console.error('Supabase not configured. Cannot upload attachment. Check .env file.');
+    return null;
+  }
   
   const fileExt = file.name.split('.').pop();
   const fileName = `${projectId}/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+  
+  console.log('Uploading to attachments bucket:', fileName);
   
   const { data, error } = await supabase.storage
     .from('attachments')
@@ -82,7 +87,7 @@ export const uploadAttachment = async (
     });
   
   if (error) {
-    console.error('Failed to upload attachment', error);
+    console.error('Failed to upload attachment:', error.message, error);
     return null;
   }
   
@@ -90,6 +95,8 @@ export const uploadAttachment = async (
   const { data: urlData } = supabase.storage
     .from('attachments')
     .getPublicUrl(data.path);
+  
+  console.log('Upload success. Public URL:', urlData.publicUrl);
   
   return {
     url: urlData.publicUrl,

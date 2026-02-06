@@ -25,12 +25,14 @@ const App: React.FC = () => {
   // Modal State
   const [selectedTask, setSelectedTask] = useState<{unitId: string, tradeId: string} | null>(null);
   const [expectedDate, setExpectedDate] = useState('');
+  const [finishDate, setFinishDate] = useState('');
   const [percentComplete, setPercentComplete] = useState(0);
   const [completionDate, setCompletionDate] = useState('');
   const [modalPosition, setModalPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const dateInputRef = useRef<HTMLInputElement>(null);
+  const finishDateRef = useRef<HTMLInputElement>(null);
   const completionDateRef = useRef<HTMLInputElement>(null);
   
   // Linking mode state
@@ -425,6 +427,7 @@ const App: React.FC = () => {
     const key = getTaskKey(unitId, tradeId);
     const task = project?.tasks[key];
     setExpectedDate(task?.expectedStartDate || '');
+    setFinishDate(task?.expectedFinishDate || '');
     setPercentComplete(task?.percentComplete || 0);
     setCompletionDate(task?.completedDate?.split('T')[0] || '');
     setPushDatesEnabled(!task?.pushDatesDisabled); // Load saved toggle state (default ON)
@@ -483,6 +486,7 @@ const App: React.FC = () => {
             ...currentTask,
             status,
             expectedStartDate: expectedDate || undefined,
+            expectedFinishDate: finishDate || undefined,
             completedDate: completedDateValue,
             percentComplete: newPercent,
             lastUpdated: now
@@ -521,6 +525,7 @@ const App: React.FC = () => {
     newTasks[key] = {
       ...newTasks[key],
       expectedStartDate: expectedDate || undefined,
+      expectedFinishDate: finishDate || undefined,
       percentComplete: percentComplete,
       pushDatesDisabled: !pushDatesEnabled, // Save toggle state
       lastUpdated: new Date().toISOString()
@@ -647,6 +652,27 @@ const App: React.FC = () => {
                         </div>
 
                         <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Expected Finish Date <span className="text-slate-400 font-normal">(optional)</span></label>
+                          <div className="flex items-center gap-2">
+                            <input 
+                              ref={finishDateRef}
+                              type="date" 
+                              value={finishDate}
+                              onChange={(e) => setFinishDate(e.target.value)}
+                              onClick={() => finishDateRef.current?.showPicker()}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setFinishDate('')}
+                              className="px-3 py-2 text-sm text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        </div>
+
+                        <div>
                              <div className="flex justify-between items-center mb-1">
                                  <label className="text-sm font-medium text-slate-700">Completion Progress</label>
                                  <span className="text-sm font-bold text-indigo-600">{percentComplete}%</span>
@@ -684,6 +710,7 @@ const App: React.FC = () => {
                         {(() => {
                             const hasChanges = 
                                 expectedDate !== (task.expectedStartDate || '') ||
+                                finishDate !== (task.expectedFinishDate || '') ||
                                 percentComplete !== (task.percentComplete || 0) ||
                                 pushDatesEnabled !== !task.pushDatesDisabled;
                             return (
@@ -955,31 +982,34 @@ const App: React.FC = () => {
                   {(!project?.attachments || project.attachments.length === 0) ? (
                     <p className="text-slate-500 text-sm">No attachments yet. Upload photos or PDFs to include them in reports.</p>
                   ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div className="flex flex-col gap-6">
                       {project.attachments.map(attachment => (
                         <div key={attachment.id} className="relative group border border-slate-200 rounded-lg overflow-hidden">
+                          <div className="flex items-center justify-between p-3 bg-slate-50 border-b border-slate-200">
+                            <p className="text-sm font-medium text-slate-700 truncate" title={attachment.name}>{attachment.name}</p>
+                            <button
+                              onClick={() => handleDeleteAttachment(attachment.id)}
+                              className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
+                              title="Delete attachment"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                           {attachment.type === 'image' ? (
                             <img 
                               src={attachment.url} 
                               alt={attachment.name}
-                              className="w-full h-40 object-cover"
+                              className="w-full bg-slate-100"
+                              onError={(e) => { (e.target as HTMLImageElement).src = ''; (e.target as HTMLImageElement).alt = 'Failed to load image'; }}
                             />
                           ) : (
-                            <div className="w-full h-40 bg-slate-100 flex flex-col items-center justify-center">
-                              <FileText className="w-12 h-12 text-slate-400 mb-2" />
-                              <span className="text-xs text-slate-600 px-2 text-center truncate w-full">{attachment.name}</span>
-                            </div>
+                            <iframe
+                              src={attachment.url}
+                              title={attachment.name}
+                              className="w-full bg-white"
+                              style={{ height: '80vh' }}
+                            />
                           )}
-                          <button
-                            onClick={() => handleDeleteAttachment(attachment.id)}
-                            className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                            title="Delete attachment"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                          <div className="p-2 bg-white border-t border-slate-200">
-                            <p className="text-xs text-slate-600 truncate" title={attachment.name}>{attachment.name}</p>
-                          </div>
                         </div>
                       ))}
                     </div>

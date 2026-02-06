@@ -31,6 +31,7 @@ export interface Task {
   tradeId: string;
   status: TaskStatus;
   expectedStartDate?: string; // ISO Date string YYYY-MM-DD
+  expectedFinishDate?: string; // ISO Date string YYYY-MM-DD (optional end date)
   completedDate?: string; // ISO Date string
   percentComplete?: number; // 0-100
   linkedToTaskKey?: string; // Custom link to another task (unitId_tradeId)

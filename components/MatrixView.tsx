@@ -144,8 +144,11 @@ const MatrixView: React.FC<MatrixViewProps> = ({ project, onTaskClick, onReorder
 
     if (isNaN(dObj.getTime())) return null;
 
+    const dayNames = ['Sun', 'Mon', 'Tues', 'Wed', 'Thurs', 'Fri', 'Sat'];
+
     return {
         weekday: dObj.toLocaleDateString('en-US', { weekday: 'long' }),
+        shortWeekday: dayNames[dObj.getDay()],
         formattedDate: dObj.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })
     };
   };
@@ -323,6 +326,8 @@ const MatrixView: React.FC<MatrixViewProps> = ({ project, onTaskClick, onReorder
                   }
 
                   const dateInfo = displayDate ? getDateInfo(displayDate) : null;
+                  const finishDateInfo = task?.expectedFinishDate ? getDateInfo(task.expectedFinishDate) : null;
+                  const hasFinishDate = !!finishDateInfo && status !== 'complete';
                   const percent = task?.percentComplete || 0;
                   
                   // Check if this is the task being linked from
@@ -340,7 +345,35 @@ const MatrixView: React.FC<MatrixViewProps> = ({ project, onTaskClick, onReorder
                         className={`p-1 border-b border-slate-100 transition-colors duration-150 h-16 ${!isReordering && 'cursor-pointer'} ${isLinkingMode && !isLinkingSource ? 'ring-2 ring-indigo-400 ring-inset' : ''} ${isLinkingSource ? 'ring-2 ring-amber-500 ring-inset' : ''}`}
                       >
                         <div className={`w-full h-full rounded flex flex-col items-center justify-center transition-all ${STATUS_COLORS[status]} ${!isReordering && 'hover:opacity-90'} relative overflow-hidden ${isLinkingMode && !isLinkingSource ? 'hover:ring-2 hover:ring-indigo-600' : ''}`}>
-                          {dateInfo ? (
+                          {dateInfo && hasFinishDate ? (
+                              // Dual Date View (Start + Finish)
+                              <div className="flex flex-col items-center justify-center w-full h-full p-0.5 relative z-10">
+                                  <div className="flex items-center gap-1">
+                                      <span className="text-[10px] font-bold opacity-70">S</span>
+                                      <span className="text-sm font-extrabold leading-none">
+                                          {dateInfo.formattedDate}
+                                      </span>
+                                      <span className="text-[10px] font-bold opacity-60 lowercase">
+                                          {dateInfo.shortWeekday}
+                                      </span>
+                                  </div>
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                      <span className="text-[10px] font-bold opacity-70">F</span>
+                                      <span className="text-sm font-extrabold leading-none">
+                                          {finishDateInfo!.formattedDate}
+                                      </span>
+                                      <span className="text-[10px] font-bold opacity-60 lowercase">
+                                          {finishDateInfo!.shortWeekday}
+                                      </span>
+                                  </div>
+                                  
+                                  {status === 'in-progress' && percent > 0 && (
+                                       <div className="absolute top-0.5 right-0.5 text-[9px] font-bold opacity-75">
+                                          {percent}%
+                                       </div>
+                                  )}
+                              </div>
+                          ) : dateInfo ? (
                               // Date View (Takes up entire cell)
                               <div className="flex flex-col items-center justify-center w-full h-full p-1 relative z-10">
                                   <span className="text-[10px] uppercase font-bold tracking-wider opacity-80 mb-0.5">

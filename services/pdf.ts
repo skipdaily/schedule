@@ -72,6 +72,8 @@ export const generateProjectPDF = async (project: Project) => {
           let cellText = '';
           
           if (task) {
+              const dayAbbr = ['sun', 'mon', 'tues', 'wed', 'thurs', 'fri', 'sat'];
+
               // Safe parse for Expected Start Date (YYYY-MM-DD) to avoid timezone shifts
               let startStr = '';
               if (task.expectedStartDate) {
@@ -82,6 +84,21 @@ export const generateProjectPDF = async (project: Project) => {
                       const d = parseInt(parts[2], 10);
                       const dateObj = new Date(y, m - 1, d);
                       startStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
+                      startStr += ` ${dayAbbr[dateObj.getDay()]}`;
+                  }
+              }
+
+              // Safe parse for Expected Finish Date
+              let finishStr = '';
+              if (task.expectedFinishDate) {
+                  const parts = task.expectedFinishDate.split('-');
+                  if (parts.length === 3) {
+                      const y = parseInt(parts[0], 10);
+                      const m = parseInt(parts[1], 10);
+                      const d = parseInt(parts[2], 10);
+                      const dateObj = new Date(y, m - 1, d);
+                      finishStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
+                      finishStr += ` ${dayAbbr[dateObj.getDay()]}`;
                   }
               }
 
@@ -94,12 +111,24 @@ export const generateProjectPDF = async (project: Project) => {
                   }
               } else if (task.status === 'in-progress') {
                   cellText = `Work ${task.percentComplete || 0}%`;
-                  if (startStr) cellText += `\nEst: ${startStr}`;
+                  if (startStr && finishStr) {
+                      cellText += `\nS: ${startStr}\nF: ${finishStr}`;
+                  } else if (startStr) {
+                      cellText += `\nS: ${startStr}`;
+                  }
               } else if (task.status === 'ready') {
                   cellText = 'READY';
-                  if (startStr) cellText += `\nEst: ${startStr}`;
+                  if (startStr && finishStr) {
+                      cellText += `\nS: ${startStr}\nF: ${finishStr}`;
+                  } else if (startStr) {
+                      cellText += `\nS: ${startStr}`;
+                  }
               } else if (task.status === 'not-started') {
-                  if (startStr) cellText = `Est: ${startStr}`;
+                  if (startStr && finishStr) {
+                      cellText = `S: ${startStr}\nF: ${finishStr}`;
+                  } else if (startStr) {
+                      cellText = `S: ${startStr}`;
+                  }
               }
           }
           row[trade.id] = cellText;
