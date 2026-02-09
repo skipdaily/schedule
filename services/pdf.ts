@@ -199,61 +199,41 @@ export const generateProjectPDF = async (project: Project) => {
     const validImages = imageData.filter(d => d.dataUrl !== null);
     
     if (validImages.length > 0) {
-      // Add a section header
-      doc.addPage();
-      doc.setFontSize(14);
-      doc.setTextColor(30, 41, 59);
-      doc.text('Attachments', 14, 20);
-      
-      let currentY = 30;
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       const margin = 14;
-      const maxImageWidth = (pageWidth - margin * 2) / 2 - 5; // Two images per row
-      let currentX = margin;
-      let rowMaxHeight = 0;
+      const titleHeight = 12; // space for caption below title area
+      const availableWidth = pageWidth - margin * 2;
+      const availableHeight = pageHeight - margin * 2 - titleHeight;
       
       for (const { attachment, dataUrl } of validImages) {
         try {
-          // Get image dimensions
+          // Each image gets its own full page
+          doc.addPage();
+          
+          // Add caption/title at the top
+          doc.setFontSize(10);
+          doc.setTextColor(30, 41, 59);
+          doc.text(attachment.name, margin, margin + 6);
+          
+          // Get image dimensions and calculate size to fill the page
           const imgProps = doc.getImageProperties(dataUrl!);
           const aspectRatio = imgProps.height / imgProps.width;
-        
-          let imgWidth = Math.min(maxImageWidth, 120);
+          
+          let imgWidth = availableWidth;
           let imgHeight = imgWidth * aspectRatio;
           
-          // Cap height
-          if (imgHeight > 80) {
-            imgHeight = 80;
+          // If height exceeds available space, scale down by height instead
+          if (imgHeight > availableHeight) {
+            imgHeight = availableHeight;
             imgWidth = imgHeight / aspectRatio;
           }
           
-          // Check if we need a new row
-          if (currentX + imgWidth > pageWidth - margin) {
-            currentX = margin;
-            currentY += rowMaxHeight + 15;
-            rowMaxHeight = 0;
-          }
+          // Center the image on the page
+          const xOffset = margin + (availableWidth - imgWidth) / 2;
+          const yOffset = margin + titleHeight + (availableHeight - imgHeight) / 2;
           
-          // Check if we need a new page
-          if (currentY + imgHeight > pageHeight - 20) {
-            doc.addPage();
-            currentY = 20;
-            currentX = margin;
-            rowMaxHeight = 0;
-          }
-          
-          // Add the image
-          doc.addImage(dataUrl!, 'JPEG', currentX, currentY, imgWidth, imgHeight);
-          
-          // Add caption
-          doc.setFontSize(6);
-          doc.setTextColor(100, 116, 139);
-          const captionText = attachment.name.length > 25 ? attachment.name.substring(0, 22) + '...' : attachment.name;
-          doc.text(captionText, currentX, currentY + imgHeight + 4);
-          
-          rowMaxHeight = Math.max(rowMaxHeight, imgHeight + 8);
-          currentX += imgWidth + 10;
+          doc.addImage(dataUrl!, 'JPEG', xOffset, yOffset, imgWidth, imgHeight);
           
         } catch (e) {
           console.error('Failed to add image to PDF:', attachment.name, e);
