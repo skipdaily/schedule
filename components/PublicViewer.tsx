@@ -33,24 +33,29 @@ const PublicViewer: React.FC = () => {
     loadProject();
   }, [projectId]);
 
-  const formatDateToMD = (dateStr?: string) => {
-    if (!dateStr) return '';
+  const dayNames = ['Sun', 'Mon', 'Tues', 'Wed', 'Thurs', 'Fri', 'Sat'];
+
+  const formatDateInfo = (dateStr?: string) => {
+    if (!dateStr) return null;
     const parts = dateStr.split('-');
     if (parts.length === 3) {
       const y = parseInt(parts[0], 10);
       const m = parseInt(parts[1], 10);
       const d = parseInt(parts[2], 10);
       const dateObj = new Date(y, m - 1, d);
-      return `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
+      return {
+        date: `${dateObj.getMonth() + 1}/${dateObj.getDate()}`,
+        day: dayNames[dateObj.getDay()]
+      };
     }
-    return '';
+    return null;
   };
 
   const getCellText = (task?: { status: TaskStatus; expectedStartDate?: string; expectedFinishDate?: string; completedDate?: string; percentComplete?: number }) => {
     if (!task) return '';
 
-    const startStr = formatDateToMD(task.expectedStartDate);
-    const finishStr = formatDateToMD(task.expectedFinishDate);
+    const startInfo = formatDateInfo(task.expectedStartDate);
+    const finishInfo = formatDateInfo(task.expectedFinishDate);
 
     if (task.status === 'complete') {
       if (task.completedDate) {
@@ -62,22 +67,22 @@ const PublicViewer: React.FC = () => {
 
     if (task.status === 'in-progress') {
       let text = `Work ${task.percentComplete || 0}%`;
-      if (startStr) text += `\nS: ${startStr}`;
-      if (finishStr) text += `\nF: ${finishStr}`;
+      if (startInfo) text += `\nS: ${startInfo.date} ${startInfo.day}`;
+      if (finishInfo) text += `\nF: ${finishInfo.date} ${finishInfo.day}`;
       return text;
     }
 
     if (task.status === 'ready') {
       let text = 'READY';
-      if (startStr) text += `\nS: ${startStr}`;
-      if (finishStr) text += `\nF: ${finishStr}`;
+      if (startInfo) text += `\nS: ${startInfo.date} ${startInfo.day}`;
+      if (finishInfo) text += `\nF: ${finishInfo.date} ${finishInfo.day}`;
       return text;
     }
 
     if (task.status === 'not-started') {
       let text = '';
-      if (startStr) text += `S: ${startStr}`;
-      if (finishStr) text += `${text ? '\n' : ''}F: ${finishStr}`;
+      if (startInfo) text += `S: ${startInfo.date} ${startInfo.day}`;
+      if (finishInfo) text += `${text ? '\n' : ''}F: ${finishInfo.date} ${finishInfo.day}`;
       return text;
     }
 
