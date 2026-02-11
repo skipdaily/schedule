@@ -221,14 +221,14 @@ const PublicViewer: React.FC = () => {
         {project.attachments && project.attachments.length > 0 && (
           <div className="border border-slate-200 p-4 mt-6">
             <h3 className="text-lg font-semibold text-slate-900 mb-4">Attachments</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="flex flex-col gap-6">
               {project.attachments.map(attachment => (
                 <div key={attachment.id} className="border border-slate-200 rounded-lg overflow-hidden">
                   {attachment.type === 'image' ? (
                     <img 
                       src={attachment.url} 
                       alt={attachment.name}
-                      className="w-full h-40 object-cover"
+                      className="w-full object-contain"
                     />
                   ) : (
                     <div className="w-full h-40 bg-slate-100 flex flex-col items-center justify-center">
