@@ -33,21 +33,24 @@ const PublicViewer: React.FC = () => {
     loadProject();
   }, [projectId]);
 
-  const getCellText = (task?: { status: TaskStatus; expectedStartDate?: string; completedDate?: string; percentComplete?: number }) => {
+  const formatDateToMD = (dateStr?: string) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10);
+      const d = parseInt(parts[2], 10);
+      const dateObj = new Date(y, m - 1, d);
+      return `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
+    }
+    return '';
+  };
+
+  const getCellText = (task?: { status: TaskStatus; expectedStartDate?: string; expectedFinishDate?: string; completedDate?: string; percentComplete?: number }) => {
     if (!task) return '';
 
-    // Expected Start Date formatting to M/D
-    let startStr = '';
-    if (task.expectedStartDate) {
-      const parts = task.expectedStartDate.split('-');
-      if (parts.length === 3) {
-        const y = parseInt(parts[0], 10);
-        const m = parseInt(parts[1], 10);
-        const d = parseInt(parts[2], 10);
-        const dateObj = new Date(y, m - 1, d);
-        startStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
-      }
-    }
+    const startStr = formatDateToMD(task.expectedStartDate);
+    const finishStr = formatDateToMD(task.expectedFinishDate);
 
     if (task.status === 'complete') {
       if (task.completedDate) {
@@ -59,18 +62,23 @@ const PublicViewer: React.FC = () => {
 
     if (task.status === 'in-progress') {
       let text = `Work ${task.percentComplete || 0}%`;
-      if (startStr) text += `\nEst: ${startStr}`;
+      if (startStr) text += `\nS: ${startStr}`;
+      if (finishStr) text += `\nF: ${finishStr}`;
       return text;
     }
 
     if (task.status === 'ready') {
       let text = 'READY';
-      if (startStr) text += `\nEst: ${startStr}`;
+      if (startStr) text += `\nS: ${startStr}`;
+      if (finishStr) text += `\nF: ${finishStr}`;
       return text;
     }
 
     if (task.status === 'not-started') {
-      if (startStr) return `Est: ${startStr}`;
+      let text = '';
+      if (startStr) text += `S: ${startStr}`;
+      if (finishStr) text += `${text ? '\n' : ''}F: ${finishStr}`;
+      return text;
     }
 
     return '';
@@ -115,7 +123,7 @@ const PublicViewer: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       {/* Project Info */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full">
+      <div className="px-4 sm:px-6 lg:px-8 py-6 w-full">
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">{project.name}</h1>
@@ -157,7 +165,7 @@ const PublicViewer: React.FC = () => {
       </div>
 
       {/* Matrix View */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 w-full">
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 pb-8 w-full">
         <div className="border border-slate-200 overflow-auto">
           <table className="min-w-full border-collapse text-[10px]" style={{ zoom: zoomLevel / 100 }}>
             <thead className="bg-slate-50 sticky top-0 z-40">
