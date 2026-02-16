@@ -146,9 +146,9 @@ export const pushLinkedTasks = (
   // Also push the finish date by the same number of days
   if (changedTask.expectedFinishDate && daysMoved !== 0) {
     if (daysMoved > 0) {
-      updatedChangedTask.expectedFinishDate = addBusinessDays(changedTask.expectedFinishDate, daysMoved);
+      updatedChangedTask.expectedFinishDate = ensureWeekday(addBusinessDays(changedTask.expectedFinishDate, daysMoved));
     } else {
-      updatedChangedTask.expectedFinishDate = subtractBusinessDays(changedTask.expectedFinishDate, Math.abs(daysMoved));
+      updatedChangedTask.expectedFinishDate = ensureWeekday(subtractBusinessDays(changedTask.expectedFinishDate, Math.abs(daysMoved)));
     }
   }
   
@@ -178,9 +178,9 @@ export const pushLinkedTasks = (
     // Move this task by the same number of days as the changed task
     let newDate: string;
     if (daysMoved > 0) {
-      newDate = addBusinessDays(originalCurrentTask.expectedStartDate, daysMoved);
+      newDate = ensureWeekday(addBusinessDays(originalCurrentTask.expectedStartDate, daysMoved));
     } else {
-      newDate = subtractBusinessDays(originalCurrentTask.expectedStartDate, Math.abs(daysMoved));
+      newDate = ensureWeekday(subtractBusinessDays(originalCurrentTask.expectedStartDate, Math.abs(daysMoved)));
     }
 
     const updatedTask: Task = {
@@ -192,9 +192,9 @@ export const pushLinkedTasks = (
     // Also push the finish date if it exists
     if (originalCurrentTask.expectedFinishDate) {
       if (daysMoved > 0) {
-        updatedTask.expectedFinishDate = addBusinessDays(originalCurrentTask.expectedFinishDate, daysMoved);
+        updatedTask.expectedFinishDate = ensureWeekday(addBusinessDays(originalCurrentTask.expectedFinishDate, daysMoved));
       } else {
-        updatedTask.expectedFinishDate = subtractBusinessDays(originalCurrentTask.expectedFinishDate, Math.abs(daysMoved));
+        updatedTask.expectedFinishDate = ensureWeekday(subtractBusinessDays(originalCurrentTask.expectedFinishDate, Math.abs(daysMoved)));
       }
     }
     
@@ -248,9 +248,9 @@ export const pushLinkedTasks = (
           const finishDaysDiff = businessDaysBetween(originalTask.expectedStartDate, originalTask.expectedFinishDate);
           const newTaskDateMoved = businessDaysBetween(originalTask.expectedStartDate, ensureWeekday(newDate));
           if (newTaskDateMoved > 0) {
-            updatedLinkedTask.expectedFinishDate = addBusinessDays(originalTask.expectedFinishDate, newTaskDateMoved);
+            updatedLinkedTask.expectedFinishDate = ensureWeekday(addBusinessDays(originalTask.expectedFinishDate, newTaskDateMoved));
           } else {
-            updatedLinkedTask.expectedFinishDate = subtractBusinessDays(originalTask.expectedFinishDate, Math.abs(newTaskDateMoved));
+            updatedLinkedTask.expectedFinishDate = ensureWeekday(subtractBusinessDays(originalTask.expectedFinishDate, Math.abs(newTaskDateMoved)));
           }
         }
         
@@ -292,9 +292,9 @@ export const pushLinkedTasks = (
 
       let newDate: string;
       if (movedDays > 0) {
-        newDate = addBusinessDays(originalCurrentTask.expectedStartDate, movedDays);
+        newDate = ensureWeekday(addBusinessDays(originalCurrentTask.expectedStartDate, movedDays));
       } else {
-        newDate = subtractBusinessDays(originalCurrentTask.expectedStartDate, Math.abs(movedDays));
+        newDate = ensureWeekday(subtractBusinessDays(originalCurrentTask.expectedStartDate, Math.abs(movedDays)));
       }
 
       const updatedCascadeTask: Task = {
@@ -306,9 +306,9 @@ export const pushLinkedTasks = (
       // Also push the finish date if it exists
       if (originalCurrentTask.expectedFinishDate) {
         if (movedDays > 0) {
-          updatedCascadeTask.expectedFinishDate = addBusinessDays(originalCurrentTask.expectedFinishDate, movedDays);
+          updatedCascadeTask.expectedFinishDate = ensureWeekday(addBusinessDays(originalCurrentTask.expectedFinishDate, movedDays));
         } else {
-          updatedCascadeTask.expectedFinishDate = subtractBusinessDays(originalCurrentTask.expectedFinishDate, Math.abs(movedDays));
+          updatedCascadeTask.expectedFinishDate = ensureWeekday(subtractBusinessDays(originalCurrentTask.expectedFinishDate, Math.abs(movedDays)));
         }
       }
       

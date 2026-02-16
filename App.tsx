@@ -503,21 +503,25 @@ const App: React.FC = () => {
   };
 
   const handleStartDateChange = (newStartDate: string) => {
-    // Auto-adjust finish date to maintain the same duration
-    if (expectedDate && finishDate && newStartDate) {
+    // Ensure the new start date is a weekday
+    const adjustedStart = ensureWeekday(newStartDate);
+    
+    // Auto-adjust finish date to maintain the same calendar day duration
+    if (expectedDate && finishDate && adjustedStart) {
       const [oy, om, od] = expectedDate.split('-').map(Number);
       const [fy, fm, fd] = finishDate.split('-').map(Number);
       const oldStart = new Date(oy, om - 1, od);
       const oldFinish = new Date(fy, fm - 1, fd);
       const diffMs = oldFinish.getTime() - oldStart.getTime();
       
-      const [ny, nm, nd] = newStartDate.split('-').map(Number);
+      const [ny, nm, nd] = adjustedStart.split('-').map(Number);
       const newStart = new Date(ny, nm - 1, nd);
       const newFinish = new Date(newStart.getTime() + diffMs);
       const pad = (n: number) => n.toString().padStart(2, '0');
-      setFinishDate(`${newFinish.getFullYear()}-${pad(newFinish.getMonth() + 1)}-${pad(newFinish.getDate())}`);
+      const newFinishStr = `${newFinish.getFullYear()}-${pad(newFinish.getMonth() + 1)}-${pad(newFinish.getDate())}`;
+      setFinishDate(ensureWeekday(newFinishStr));
     }
-    setExpectedDate(newStartDate);
+    setExpectedDate(adjustedStart);
   };
 
   const saveDetails = () => {
@@ -539,11 +543,11 @@ const App: React.FC = () => {
       );
     }
     
-    // Update the current task with new date and percent
+    // Update the current task with new date and percent (ensure weekdays)
     newTasks[key] = {
       ...newTasks[key],
-      expectedStartDate: expectedDate || undefined,
-      expectedFinishDate: finishDate || undefined,
+      expectedStartDate: expectedDate ? ensureWeekday(expectedDate) : undefined,
+      expectedFinishDate: finishDate ? ensureWeekday(finishDate) : undefined,
       percentComplete: percentComplete,
       pushDatesDisabled: !pushDatesEnabled, // Save toggle state
       lastUpdated: new Date().toISOString()
