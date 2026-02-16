@@ -502,6 +502,24 @@ const App: React.FC = () => {
     setSelectedTask(null);
   };
 
+  const handleStartDateChange = (newStartDate: string) => {
+    // Auto-adjust finish date to maintain the same duration
+    if (expectedDate && finishDate && newStartDate) {
+      const [oy, om, od] = expectedDate.split('-').map(Number);
+      const [fy, fm, fd] = finishDate.split('-').map(Number);
+      const oldStart = new Date(oy, om - 1, od);
+      const oldFinish = new Date(fy, fm - 1, fd);
+      const diffMs = oldFinish.getTime() - oldStart.getTime();
+      
+      const [ny, nm, nd] = newStartDate.split('-').map(Number);
+      const newStart = new Date(ny, nm - 1, nd);
+      const newFinish = new Date(newStart.getTime() + diffMs);
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      setFinishDate(`${newFinish.getFullYear()}-${pad(newFinish.getMonth() + 1)}-${pad(newFinish.getDate())}`);
+    }
+    setExpectedDate(newStartDate);
+  };
+
   const saveDetails = () => {
     if (!project || !selectedTask) return;
     const key = getTaskKey(selectedTask.unitId, selectedTask.tradeId);
@@ -531,7 +549,9 @@ const App: React.FC = () => {
       lastUpdated: new Date().toISOString()
     };
     
-    updateCurrentProject({ ...project, tasks: newTasks });
+    let updatedProject = { ...project, tasks: newTasks };
+    updatedProject = updateReadinessState(updatedProject);
+    updateCurrentProject(updatedProject);
     setSelectedTask(null);
     setModalPosition({ x: 0, y: 0 });
   };
@@ -637,7 +657,7 @@ const App: React.FC = () => {
                               ref={dateInputRef}
                               type="date" 
                               value={expectedDate}
-                              onChange={(e) => setExpectedDate(e.target.value)}
+                              onChange={(e) => handleStartDateChange(e.target.value)}
                               onClick={() => dateInputRef.current?.showPicker()}
                               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
                             />

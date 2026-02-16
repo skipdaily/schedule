@@ -131,17 +131,28 @@ export const pushLinkedTasks = (
 
   const newTasks = { ...tasks };
 
-  // Update the changed task first
-  newTasks[changedTaskKey] = {
-    ...changedTask,
-    expectedStartDate: adjustedNewDate,
-    lastUpdated: new Date().toISOString()
-  };
-
   // Calculate how many business days the changed task moved
   const daysMoved = originalChangedTask?.expectedStartDate 
     ? businessDaysBetween(originalChangedTask.expectedStartDate, adjustedNewDate)
     : 0;
+
+  // Update the changed task first
+  const updatedChangedTask: Task = {
+    ...changedTask,
+    expectedStartDate: adjustedNewDate,
+    lastUpdated: new Date().toISOString()
+  };
+  
+  // Also push the finish date by the same number of days
+  if (changedTask.expectedFinishDate && daysMoved !== 0) {
+    if (daysMoved > 0) {
+      updatedChangedTask.expectedFinishDate = addBusinessDays(changedTask.expectedFinishDate, daysMoved);
+    } else {
+      updatedChangedTask.expectedFinishDate = subtractBusinessDays(changedTask.expectedFinishDate, Math.abs(daysMoved));
+    }
+  }
+  
+  newTasks[changedTaskKey] = updatedChangedTask;
 
   // If no movement, nothing else to do
   if (daysMoved === 0) {
@@ -172,11 +183,22 @@ export const pushLinkedTasks = (
       newDate = subtractBusinessDays(originalCurrentTask.expectedStartDate, Math.abs(daysMoved));
     }
 
-    newTasks[currentTaskKey] = {
+    const updatedTask: Task = {
       ...currentTask,
       expectedStartDate: newDate,
       lastUpdated: new Date().toISOString()
     };
+    
+    // Also push the finish date if it exists
+    if (originalCurrentTask.expectedFinishDate) {
+      if (daysMoved > 0) {
+        updatedTask.expectedFinishDate = addBusinessDays(originalCurrentTask.expectedFinishDate, daysMoved);
+      } else {
+        updatedTask.expectedFinishDate = subtractBusinessDays(originalCurrentTask.expectedFinishDate, Math.abs(daysMoved));
+      }
+    }
+    
+    newTasks[currentTaskKey] = updatedTask;
   }
 
   // Now handle custom-linked tasks
@@ -214,11 +236,25 @@ export const pushLinkedTasks = (
           newDate = subtractBusinessDays(linkedTaskEndDate, Math.abs(originalGap));
         }
         
-        newTasks[taskKey] = {
+        const originalTask = tasks[taskKey];
+        const updatedLinkedTask: Task = {
           ...task,
           expectedStartDate: ensureWeekday(newDate),
           lastUpdated: new Date().toISOString()
         };
+        
+        // Also push the finish date if it exists
+        if (originalTask?.expectedFinishDate && originalTask.expectedStartDate) {
+          const finishDaysDiff = businessDaysBetween(originalTask.expectedStartDate, originalTask.expectedFinishDate);
+          const newTaskDateMoved = businessDaysBetween(originalTask.expectedStartDate, ensureWeekday(newDate));
+          if (newTaskDateMoved > 0) {
+            updatedLinkedTask.expectedFinishDate = addBusinessDays(originalTask.expectedFinishDate, newTaskDateMoved);
+          } else {
+            updatedLinkedTask.expectedFinishDate = subtractBusinessDays(originalTask.expectedFinishDate, Math.abs(newTaskDateMoved));
+          }
+        }
+        
+        newTasks[taskKey] = updatedLinkedTask;
         customLinkedMovedKeys.push(taskKey);
       }
     }
@@ -261,11 +297,22 @@ export const pushLinkedTasks = (
         newDate = subtractBusinessDays(originalCurrentTask.expectedStartDate, Math.abs(movedDays));
       }
 
-      newTasks[currentTaskKey] = {
+      const updatedCascadeTask: Task = {
         ...currentTask,
         expectedStartDate: newDate,
         lastUpdated: new Date().toISOString()
       };
+      
+      // Also push the finish date if it exists
+      if (originalCurrentTask.expectedFinishDate) {
+        if (movedDays > 0) {
+          updatedCascadeTask.expectedFinishDate = addBusinessDays(originalCurrentTask.expectedFinishDate, movedDays);
+        } else {
+          updatedCascadeTask.expectedFinishDate = subtractBusinessDays(originalCurrentTask.expectedFinishDate, Math.abs(movedDays));
+        }
+      }
+      
+      newTasks[currentTaskKey] = updatedCascadeTask;
     }
   });
 
