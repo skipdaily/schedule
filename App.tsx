@@ -40,7 +40,7 @@ const App: React.FC = () => {
   const [linkingFromTask, setLinkingFromTask] = useState<{unitId: string, tradeId: string} | null>(null);
   
   // Push dates toggle (controls whether date changes cascade to linked tasks)
-  const [pushDatesEnabled, setPushDatesEnabled] = useState(true);
+  const [pushDatesEnabled, setPushDatesEnabled] = useState(false);
   
   // Attachment upload ref
   const attachmentInputRef = useRef<HTMLInputElement>(null);
@@ -430,7 +430,7 @@ const App: React.FC = () => {
     setFinishDate(task?.expectedFinishDate || '');
     setPercentComplete(task?.percentComplete || 0);
     setCompletionDate(task?.completedDate?.split('T')[0] || '');
-    setPushDatesEnabled(!task?.pushDatesDisabled); // Load saved toggle state (default ON)
+    setPushDatesEnabled(task?.pushDatesDisabled === false); // Load saved toggle state (default OFF)
   };
 
   const startLinkingMode = () => {
