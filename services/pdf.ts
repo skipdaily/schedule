@@ -22,147 +22,113 @@ export const generateProjectPDF = async (project: Project) => {
   try {
   // Initialize PDF in landscape mode to fit the matrix
   const doc = new jsPDF({ orientation: 'landscape' });
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 10;
 
-  // --- Compact Header ---
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(30, 41, 59);
-  doc.text(project.name, margin, 12);
-
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 116, 139);
-  doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth - margin, 12, { align: 'right' });
+  // --- Header Section ---
+  doc.setFontSize(18);
+  doc.setTextColor(30, 41, 59); // Slate 800
+  doc.text(project.name, 14, 15);
 
   doc.setFontSize(8);
-  doc.setTextColor(71, 85, 105);
-  const headerParts = [project.address];
-  if (project.projectedCompletionDate) headerParts.push(`Target: ${project.projectedCompletionDate}`);
-  doc.text(headerParts.join('  •  '), margin, 18);
+  doc.setTextColor(100, 116, 139); // Slate 500
+  const dateStr = new Date().toLocaleDateString();
+  doc.text(`Generated: ${dateStr}`, 297 - 14, 15, { align: 'right' });
 
-  // --- Statistics Bar ---
+  doc.setFontSize(10);
+  doc.setTextColor(51, 65, 85); // Slate 700
+  doc.text(`Address: ${project.address}`, 14, 22);
+  
+  if (project.projectedCompletionDate) {
+      doc.text(`Target Completion: ${project.projectedCompletionDate}`, 14, 27);
+  }
+
+  // --- Statistics Summary ---
   const tasks = Object.values(project.tasks);
+  const ready = tasks.filter(t => t.status === 'ready').length;
+  const progress = tasks.filter(t => t.status === 'in-progress').length;
   const done = tasks.filter(t => t.status === 'complete').length;
   const total = tasks.length;
   const percent = total > 0 ? Math.round((done / total) * 100) : 0;
-  const progress = tasks.filter(t => t.status === 'in-progress').length;
-  const ready = tasks.filter(t => t.status === 'ready').length;
 
-  const barY = 22;
-  const barWidth = pageWidth - margin * 2;
-  const barHeight = 4;
-
-  // Background bar
-  doc.setFillColor(241, 245, 249);
-  doc.roundedRect(margin, barY, barWidth, barHeight, 1, 1, 'F');
-  // Progress fill
-  if (percent > 0) {
-    doc.setFillColor(16, 185, 129); // Emerald 500
-    doc.roundedRect(margin, barY, barWidth * (percent / 100), barHeight, 1, 1, 'F');
-  }
-  // Progress label
-  doc.setFontSize(6);
-  doc.setTextColor(30, 41, 59);
-  doc.text(`${percent}% Complete  •  ${done}/${total} tasks  •  ${progress} in progress  •  ${ready} ready`, margin, barY + barHeight + 4);
-
-  // --- Legend ---
-  const legendY = barY + barHeight + 7;
-  const legendItems = [
-    { symbol: '✓', label: 'Complete', fg: [22, 101, 52], bg: [220, 252, 231] },
-    { symbol: '▶', label: 'In Progress', fg: [133, 77, 14], bg: [254, 249, 195] },
-    { symbol: '●', label: 'Ready', fg: [30, 64, 175], bg: [219, 234, 254] },
-  ];
-  let legendX = pageWidth - margin;
-  doc.setFontSize(5.5);
-  // Draw right-to-left
-  for (let i = legendItems.length - 1; i >= 0; i--) {
-    const item = legendItems[i];
-    const labelW = doc.getTextWidth(` ${item.label}`);
-    const chipW = labelW + 5;
-    legendX -= chipW + 2;
-    doc.setFillColor(item.bg[0], item.bg[1], item.bg[2]);
-    doc.roundedRect(legendX, legendY - 2.5, chipW, 3.5, 0.5, 0.5, 'F');
-    doc.setTextColor(item.fg[0], item.fg[1], item.fg[2]);
-    doc.text(`${item.symbol} ${item.label}`, legendX + 1, legendY);
-  }
-
-  // --- Helper: format date compactly ---
-  const dayLetters = ['Su', 'M', 'Tu', 'W', 'Th', 'F', 'Sa'];
-  const fmtDate = (dateStr?: string): string => {
-    if (!dateStr) return '';
-    const parts = dateStr.split('-');
-    if (parts.length !== 3) return '';
-    const y = parseInt(parts[0], 10);
-    const m = parseInt(parts[1], 10);
-    const d = parseInt(parts[2], 10);
-    const dateObj = new Date(y, m - 1, d);
-    return `${dateObj.getMonth() + 1}/${dateObj.getDate()} ${dayLetters[dateObj.getDay()]}`;
-  };
+  doc.setFontSize(9);
+  doc.setTextColor(15, 23, 42); // Slate 900
+  doc.text(`Overall Progress: ${percent}%  |  Ready: ${ready}  |  In Progress: ${progress}  |  Complete: ${done}`, 14, 35);
 
   // --- Interior Matrix Table ---
-  const interiorTrades = project.trades.filter(t => t.scope === 'interior').sort((a, b) => a.orderIndex - b.orderIndex);
-  const tradeCount = interiorTrades.length;
+  const interiorTrades = project.trades.filter(t => t.scope === 'interior');
   
-  // Calculate column widths: fixed unit col, equal trade cols
-  const unitColWidth = 22;
-  const availableForTrades = pageWidth - margin * 2 - unitColWidth;
-  const tradeColWidth = Math.max(12, availableForTrades / tradeCount);
-
+  // Define Columns
   const columns = [
       { header: 'Unit', dataKey: 'unit' },
       ...interiorTrades.map(t => ({ header: t.name, dataKey: t.id }))
   ];
 
-  // Build column styles with equal widths
-  const colStyles: Record<string, any> = {
-    unit: { 
-      fontStyle: 'bold', 
-      fillColor: [248, 250, 252], 
-      cellWidth: unitColWidth,
-      halign: 'left' as const
-    }
-  };
-  interiorTrades.forEach(t => {
-    colStyles[t.id] = { cellWidth: tradeColWidth };
-  });
-
-  // Build body rows with clean, compact text
+  // Define Rows
   const body = project.units.map(unit => {
       const row: Record<string, string> = { unit: unit.name };
       
       interiorTrades.forEach(trade => {
           const key = `${unit.id}_${trade.id}`;
           const task = project.tasks[key];
+          
           let cellText = '';
           
           if (task) {
-              const start = fmtDate(task.expectedStartDate);
-              const finish = fmtDate(task.expectedFinishDate);
+              const dayAbbr = ['sun', 'mon', 'tues', 'wed', 'thurs', 'fri', 'sat'];
+
+              // Safe parse for Expected Start Date (YYYY-MM-DD) to avoid timezone shifts
+              let startStr = '';
+              if (task.expectedStartDate) {
+                  const parts = task.expectedStartDate.split('-');
+                  if (parts.length === 3) {
+                      const y = parseInt(parts[0], 10);
+                      const m = parseInt(parts[1], 10);
+                      const d = parseInt(parts[2], 10);
+                      const dateObj = new Date(y, m - 1, d);
+                      startStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
+                      startStr += ` ${dayAbbr[dateObj.getDay()]}`;
+                  }
+              }
+
+              // Safe parse for Expected Finish Date
+              let finishStr = '';
+              if (task.expectedFinishDate) {
+                  const parts = task.expectedFinishDate.split('-');
+                  if (parts.length === 3) {
+                      const y = parseInt(parts[0], 10);
+                      const m = parseInt(parts[1], 10);
+                      const d = parseInt(parts[2], 10);
+                      const dateObj = new Date(y, m - 1, d);
+                      finishStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
+                      finishStr += ` ${dayAbbr[dateObj.getDay()]}`;
+                  }
+              }
 
               if (task.status === 'complete') {
                   if (task.completedDate) {
-                      const d = new Date(task.completedDate);
-                      cellText = `✓ ${d.getMonth() + 1}/${d.getDate()}`;
+                       const d = new Date(task.completedDate);
+                       cellText = `Done ${d.getMonth() + 1}/${d.getDate()}`;
                   } else {
-                      cellText = '✓ Done';
+                      cellText = 'DONE';
                   }
               } else if (task.status === 'in-progress') {
-                  cellText = `▶ ${task.percentComplete || 0}%`;
-                  if (start) cellText += `\n${start}`;
-                  if (finish) cellText += `\n→ ${finish}`;
+                  cellText = `Work ${task.percentComplete || 0}%`;
+                  if (startStr && finishStr) {
+                      cellText += `\nS: ${startStr}\nF: ${finishStr}`;
+                  } else if (startStr) {
+                      cellText += `\nS: ${startStr}`;
+                  }
               } else if (task.status === 'ready') {
-                  cellText = '● Ready';
-                  if (start) cellText += `\n${start}`;
-                  if (finish) cellText += `\n→ ${finish}`;
-              } else {
-                  // not-started
-                  if (start && finish) {
-                      cellText = `${start}\n→ ${finish}`;
-                  } else if (start) {
-                      cellText = start;
+                  cellText = 'READY';
+                  if (startStr && finishStr) {
+                      cellText += `\nS: ${startStr}\nF: ${finishStr}`;
+                  } else if (startStr) {
+                      cellText += `\nS: ${startStr}`;
+                  }
+              } else if (task.status === 'not-started') {
+                  if (startStr && finishStr) {
+                      cellText = `S: ${startStr}\nF: ${finishStr}`;
+                  } else if (startStr) {
+                      cellText = `S: ${startStr}`;
                   }
               }
           }
@@ -173,68 +139,51 @@ export const generateProjectPDF = async (project: Project) => {
 
   // Generate Table
   autoTable(doc, {
-      startY: 36,
+      startY: 40,
       columns: columns,
       body: body,
       theme: 'grid',
-      tableWidth: pageWidth - margin * 2,
-      margin: { left: margin, right: margin },
       styles: { 
-          fontSize: 5.5,
-          cellPadding: { top: 1.5, right: 1, bottom: 1.5, left: 1 },
-          lineWidth: 0.2,
-          lineColor: [203, 213, 225], // Slate 300
-          overflow: 'linebreak',
+          fontSize: 6, // Decreased font size to prevent cutoff
+          cellPadding: 1,
+          lineWidth: 0.1,
+          lineColor: [226, 232, 240], // Slate 200
+          overflow: 'linebreak', // Ensure wrapping for long text
           halign: 'center',
-          valign: 'middle',
-          minCellHeight: 10,
-          textColor: [30, 41, 59]
+          valign: 'middle'
       },
       headStyles: { 
-          fillColor: [51, 65, 85], // Slate 700 (more professional than indigo)
+          fillColor: [79, 70, 229], // Indigo 600
           textColor: 255,
           fontStyle: 'bold',
           halign: 'center',
           valign: 'middle',
-          fontSize: 5,
-          cellPadding: { top: 2, right: 1, bottom: 2, left: 1 },
-          minCellHeight: 8
+          fontSize: 6, // Match body font
+          cellPadding: 1
       },
-      columnStyles: colStyles,
-      alternateRowStyles: {
-          fillColor: [248, 250, 252] // Very subtle slate-50 stripe
+      columnStyles: {
+          unit: { fontStyle: 'bold', fillColor: [248, 250, 252], cellWidth: 15 } // Fixed width for Unit column
       },
       didParseCell: (data) => {
+          // Skip header row
           if (data.section === 'head') return;
-          if (data.column.dataKey === 'unit') return; // Don't color the unit column
-
+          
+          // Color coding for cells based on content
           const text = data.cell.raw as string;
-          if (!text || typeof text !== 'string') return;
-
-          if (text.startsWith('✓')) {
-              data.cell.styles.fillColor = [220, 252, 231]; // Emerald 100
-              data.cell.styles.textColor = [22, 101, 52];   // Emerald 800
-              data.cell.styles.fontStyle = 'bold';
-          } else if (text.startsWith('▶')) {
-              data.cell.styles.fillColor = [254, 249, 195]; // Yellow 100
-              data.cell.styles.textColor = [133, 77, 14];   // Amber 800
-              data.cell.styles.fontStyle = 'bold';
-          } else if (text.startsWith('●')) {
-              data.cell.styles.fillColor = [219, 234, 254]; // Blue 100
-              data.cell.styles.textColor = [30, 64, 175];   // Blue 800
-              data.cell.styles.fontStyle = 'bold';
+          
+          if (text && typeof text === 'string') {
+            if (text.includes('Done') || text === 'DONE') {
+                data.cell.styles.fillColor = [209, 250, 229]; // Emerald 100
+                data.cell.styles.textColor = [6, 95, 70];    // Emerald 800
+            } else if (text.includes('Work')) {
+                data.cell.styles.fillColor = [254, 243, 199]; // Amber 100
+                data.cell.styles.textColor = [146, 64, 14];   // Amber 800
+            } else if (text.startsWith('READY')) {
+                data.cell.styles.fillColor = [219, 234, 254]; // Blue 100
+                data.cell.styles.textColor = [30, 64, 175];   // Blue 800
+                data.cell.styles.fontStyle = 'bold';
+            }
           }
-      },
-      didDrawPage: (data) => {
-          // Footer on every page
-          const pageCount = (doc as any).internal.getNumberOfPages();
-          doc.setFontSize(6);
-          doc.setTextColor(148, 163, 184);
-          doc.text(
-            `${project.name}  •  Page ${data.pageNumber} of ${pageCount}`,
-            pageWidth / 2, pageHeight - 5,
-            { align: 'center' }
-          );
       }
   });
 
