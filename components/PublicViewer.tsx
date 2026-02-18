@@ -13,6 +13,7 @@ const PublicViewer: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(100);
+  const [attachmentsExpanded, setAttachmentsExpanded] = useState(false);
 
   useEffect(() => {
     const loadProject = async () => {
@@ -126,9 +127,9 @@ const PublicViewer: React.FC = () => {
   const tasks = Object.values(project.tasks) as Task[];
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="h-screen flex flex-col bg-white overflow-hidden">
       {/* Project Info */}
-      <div className="px-4 sm:px-6 lg:px-8 py-6 w-full">
+      <div className="px-4 sm:px-6 lg:px-8 py-4 w-full flex-shrink-0">
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">{project.name}</h1>
@@ -170,8 +171,8 @@ const PublicViewer: React.FC = () => {
       </div>
 
       {/* Matrix View */}
-      <main className="flex-1 px-4 sm:px-6 lg:px-8 pb-8 w-full">
-        <div className="border border-slate-200 overflow-auto">
+      <main className="flex-1 min-h-0 flex flex-col px-4 sm:px-6 lg:px-8 pb-2 w-full">
+        <div className="flex-1 min-h-0 border border-slate-200 overflow-auto">
           <table className="min-w-full border-collapse text-[10px]" style={{ zoom: zoomLevel / 100 }}>
             <thead className="bg-slate-50">
               <tr>
@@ -217,31 +218,43 @@ const PublicViewer: React.FC = () => {
           </table>
         </div>
 
-        {/* Attachments Section */}
+        {/* Attachments Section - Collapsible */}
         {project.attachments && project.attachments.length > 0 && (
-          <div className="border border-slate-200 p-4 mt-6">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Attachments</h3>
-            <div className="flex flex-col gap-6">
-              {project.attachments.map(attachment => (
-                <div key={attachment.id} className="border border-slate-200 rounded-lg overflow-hidden">
-                  {attachment.type === 'image' ? (
-                    <img 
-                      src={attachment.url} 
-                      alt={attachment.name}
-                      className="w-full object-contain"
-                    />
-                  ) : (
-                    <div className="w-full h-40 bg-slate-100 flex flex-col items-center justify-center">
-                      <FileText className="w-12 h-12 text-slate-500 mb-2" />
-                      <span className="text-xs text-slate-900 px-2 text-center truncate w-full">{attachment.name}</span>
-                    </div>
-                  )}
-                  <div className="p-2 bg-white border-t border-slate-200">
-                    <p className="text-xs text-slate-900 truncate" title={attachment.name}>{attachment.name}</p>
-                  </div>
-                </div>
-              ))}
+          <div className={`border border-slate-200 rounded-lg mt-2 flex-shrink-0 ${attachmentsExpanded ? 'max-h-[40vh] overflow-auto' : ''}`}>
+            <div 
+              className="flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-slate-50 transition-colors"
+              onClick={() => setAttachmentsExpanded(!attachmentsExpanded)}
+            >
+              <div className="flex items-center gap-2">
+                <span className={`text-xs transition-transform ${attachmentsExpanded ? 'rotate-90' : ''}`}>▶</span>
+                <h3 className="text-sm font-semibold text-slate-700">Attachments ({project.attachments.length})</h3>
+              </div>
             </div>
+            {attachmentsExpanded && (
+              <div className="px-4 pb-4">
+                <div className="flex flex-col gap-6">
+                  {project.attachments.map(attachment => (
+                    <div key={attachment.id} className="border border-slate-200 rounded-lg overflow-hidden">
+                      {attachment.type === 'image' ? (
+                        <img 
+                          src={attachment.url} 
+                          alt={attachment.name}
+                          className="w-full object-contain"
+                        />
+                      ) : (
+                        <div className="w-full h-40 bg-slate-100 flex flex-col items-center justify-center">
+                          <FileText className="w-12 h-12 text-slate-500 mb-2" />
+                          <span className="text-xs text-slate-900 px-2 text-center truncate w-full">{attachment.name}</span>
+                        </div>
+                      )}
+                      <div className="p-2 bg-white border-t border-slate-200">
+                        <p className="text-xs text-slate-900 truncate" title={attachment.name}>{attachment.name}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>
