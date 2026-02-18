@@ -42,6 +42,9 @@ const App: React.FC = () => {
   // Push dates toggle (controls whether date changes cascade to linked tasks)
   const [pushDatesEnabled, setPushDatesEnabled] = useState(false);
   
+  // Attachments section collapsed state
+  const [attachmentsExpanded, setAttachmentsExpanded] = useState(false);
+  
   // Attachment upload ref
   const attachmentInputRef = useRef<HTMLInputElement>(null);
 
@@ -851,9 +854,9 @@ const App: React.FC = () => {
 
   // Main Render
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
+    <div className={`flex flex-col bg-slate-50 ${view === 'matrix' && project ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
       {/* Navigation Bar */}
-      <nav className="bg-slate-900 text-white shadow-lg z-30 sticky top-0">
+      <nav className="bg-slate-900 text-white shadow-lg z-30 flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-2">
@@ -958,7 +961,7 @@ const App: React.FC = () => {
       </nav>
 
       {/* Content Area */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full">
+      <main className={`flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full ${view === 'matrix' && project ? 'min-h-0 overflow-hidden flex flex-col py-2' : 'py-6'}`}>
         {!project && view !== 'setup' ? (
            <div className="flex flex-col items-center justify-center h-[80vh] text-center space-y-6">
                 <div className="bg-white p-10 rounded-2xl shadow-xl border border-slate-200 max-w-lg">
@@ -982,14 +985,22 @@ const App: React.FC = () => {
             {view === 'setup' && <ProjectSetup onSave={handleCreateProject} onCancel={() => setView('dashboard')} />}
             {view === 'dashboard' && <Dashboard project={project} onTaskClick={handleTaskClick} />}
             {view === 'matrix' && (
-              <>
-                <MatrixView project={project} onTaskClick={handleTaskClick} onReorderUnits={handleReorderUnits} onReorderTrades={handleReorderTrades} onDeleteTrade={handleDeleteTrade} onAddTrade={handleAddTrade} onEditTrade={handleEditTrade} onAddUnit={handleAddUnit} onEditUnit={handleEditUnit} onDeleteUnit={handleDeleteUnit} isLinkingMode={isLinkingMode} linkingFromTask={linkingFromTask} onCancelLinking={cancelLinkingMode} />
+              <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                <div className="flex-1 min-h-0">
+                  <MatrixView project={project} onTaskClick={handleTaskClick} onReorderUnits={handleReorderUnits} onReorderTrades={handleReorderTrades} onDeleteTrade={handleDeleteTrade} onAddTrade={handleAddTrade} onEditTrade={handleEditTrade} onAddUnit={handleAddUnit} onEditUnit={handleEditUnit} onDeleteUnit={handleDeleteUnit} isLinkingMode={isLinkingMode} linkingFromTask={linkingFromTask} onCancelLinking={cancelLinkingMode} />
+                </div>
                 
-                {/* Attachments Section */}
-                <div className="bg-white shadow-sm rounded-lg border border-slate-200 p-4 mt-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-slate-800">Attachments</h3>
-                    <div>
+                {/* Attachments Section - Collapsible */}
+                <div className={`bg-white shadow-sm rounded-lg border border-slate-200 mt-2 flex-shrink-0 ${attachmentsExpanded ? 'max-h-[40vh] overflow-auto' : ''}`}>
+                  <div 
+                    className="flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-slate-50 transition-colors"
+                    onClick={() => setAttachmentsExpanded(!attachmentsExpanded)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs transition-transform ${attachmentsExpanded ? 'rotate-90' : ''}`}>▶</span>
+                      <h3 className="text-sm font-semibold text-slate-700">Attachments {project?.attachments?.length ? `(${project.attachments.length})` : ''}</h3>
+                    </div>
+                    <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                       <input
                         ref={attachmentInputRef}
                         type="file"
@@ -1000,18 +1011,20 @@ const App: React.FC = () => {
                       />
                       <button
                         onClick={() => attachmentInputRef.current?.click()}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm"
+                        className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-xs"
                       >
-                        <Upload className="w-4 h-4" />
-                        Upload Photo/PDF
+                        <Upload className="w-3.5 h-3.5" />
+                        Upload
                       </button>
                     </div>
                   </div>
                   
-                  {(!project?.attachments || project.attachments.length === 0) ? (
-                    <p className="text-slate-500 text-sm">No attachments yet. Upload photos or PDFs to include them in reports.</p>
-                  ) : (
-                    <div className="flex flex-col gap-6">
+                  {attachmentsExpanded && (
+                    <div className="px-4 pb-4">
+                      {(!project?.attachments || project.attachments.length === 0) ? (
+                        <p className="text-slate-500 text-sm">No attachments yet. Upload photos or PDFs to include them in reports.</p>
+                      ) : (
+                        <div className="flex flex-col gap-6">
                       {project.attachments.map(attachment => (
                         <div key={attachment.id} className="relative group border border-slate-200 rounded-lg overflow-hidden">
                           <div className="flex items-center justify-between p-3 bg-slate-50 border-b border-slate-200">
@@ -1043,8 +1056,10 @@ const App: React.FC = () => {
                       ))}
                     </div>
                   )}
+                    </div>
+                  )}
                 </div>
-              </>
+              </div>
             )}
           </>
         )}

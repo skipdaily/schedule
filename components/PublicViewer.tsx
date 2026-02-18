@@ -173,15 +173,15 @@ const PublicViewer: React.FC = () => {
       <main className="flex-1 px-4 sm:px-6 lg:px-8 pb-8 w-full">
         <div className="border border-slate-200 overflow-auto">
           <table className="min-w-full border-collapse text-[10px]" style={{ zoom: zoomLevel / 100 }}>
-            <thead className="bg-slate-50 sticky top-0 z-40">
+            <thead className="bg-slate-50">
               <tr>
-                <th className="sticky left-0 z-50 bg-slate-50 p-3 text-left font-semibold text-slate-900 border border-slate-200 w-24 min-w-[100px]">
+                <th className="sticky top-0 left-0 z-50 bg-slate-50 p-3 text-left font-semibold text-slate-900 border border-slate-200 w-24 min-w-[100px]">
                   Unit
                 </th>
                 {interiorTrades.map((trade) => (
                   <th
                     key={trade.id}
-                    className="p-2 text-center font-medium text-slate-900 border border-slate-200 min-w-[90px] whitespace-nowrap bg-slate-50"
+                    className="sticky top-0 z-40 p-2 text-center font-medium text-slate-900 border border-slate-200 min-w-[90px] whitespace-nowrap bg-slate-50"
                   >
                     {trade.name}
                   </th>
@@ -191,7 +191,7 @@ const PublicViewer: React.FC = () => {
             <tbody>
               {interiorUnits.map((unit) => (
                 <tr key={unit.id}>
-                  <td className="sticky left-0 z-20 bg-white p-3 font-medium text-slate-900 border border-slate-200">
+                  <td className="sticky left-0 z-30 bg-white p-3 font-medium text-slate-900 border border-slate-200">
                     {unit.name}
                   </td>
                   {interiorTrades.map((trade) => {
