@@ -332,9 +332,14 @@ const App: React.FC = () => {
     updateCurrentProject(updatedProject);
   };
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     if (project) {
-        generateProjectPDF(project);
+        try {
+            await generateProjectPDF(project);
+        } catch (error) {
+            console.error('PDF generation failed:', error);
+            alert('Failed to generate PDF. Please try again.');
+        }
     }
   };
 
