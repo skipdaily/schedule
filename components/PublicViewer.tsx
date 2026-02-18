@@ -204,9 +204,9 @@ const PublicViewer: React.FC = () => {
                     return (
                       <td
                         key={trade.id}
-                        className="p-2 border border-slate-200 text-center align-middle whitespace-pre-line text-[10px] leading-tight text-slate-900"
+                        className="p-2 border border-slate-200 text-center align-middle whitespace-pre-line text-[10px] leading-tight"
                       >
-                        <div className={`w-full h-full ${STATUS_COLORS[status]} rounded-sm px-1 py-1 text-slate-900`}>
+                        <div className={`w-full h-full ${STATUS_COLORS[status]} rounded-sm px-1 py-1 !text-black font-semibold`}>
                           {cellText}
                         </div>
                       </td>
