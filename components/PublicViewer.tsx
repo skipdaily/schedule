@@ -127,7 +127,7 @@ const PublicViewer: React.FC = () => {
   const tasks = Object.values(project.tasks) as Task[];
 
   return (
-    <div className="h-screen flex flex-col bg-white overflow-hidden">
+    <div className="min-h-screen flex flex-col bg-white">
       {/* Project Info */}
       <div className="px-4 sm:px-6 lg:px-8 py-4 w-full flex-shrink-0">
         <div className="flex items-start justify-between">
@@ -177,9 +177,9 @@ const PublicViewer: React.FC = () => {
         </div>
       </div>
 
-      {/* Matrix View */}
-      <main className="flex-1 min-h-0 flex flex-col px-4 sm:px-6 lg:px-8 pb-2 w-full">
-        <div className="flex-1 min-h-0 border border-slate-200 overflow-auto">
+      {/* Matrix View - fixed height so it scrolls internally with sticky headers */}
+      <div className="px-4 sm:px-6 lg:px-8 pb-2 w-full">
+        <div className="border border-slate-200 overflow-auto" style={{ height: 'calc(100vh - 180px)' }}>
           <table className="min-w-full border-collapse text-[10px]" style={{ zoom: zoomLevel / 100 }}>
             <thead className="bg-slate-50">
               <tr>
@@ -224,10 +224,12 @@ const PublicViewer: React.FC = () => {
             </tbody>
           </table>
         </div>
+      </div>
 
-        {/* Attachments Section */}
-        {project.attachments && project.attachments.length > 0 && (
-          <div className="border border-slate-200 rounded-lg mt-2 flex-shrink-0">
+      {/* Attachments Section - below the matrix, visible when page scrolls */}
+      {project.attachments && project.attachments.length > 0 && (
+        <div className="px-4 sm:px-6 lg:px-8 pb-4 w-full">
+          <div className="border border-slate-200 rounded-lg">
             <div className="flex items-center px-4 py-2">
               <h3 className="text-sm font-semibold text-slate-700">Attachments ({project.attachments.length})</h3>
             </div>
@@ -255,8 +257,8 @@ const PublicViewer: React.FC = () => {
               </div>
             </div>
           </div>
-        )}
-      </main>
+        </div>
+      )}
     </div>
   );
 };
