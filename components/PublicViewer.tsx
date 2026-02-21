@@ -5,7 +5,8 @@ import { STATUS_COLORS, STATUS_LABELS } from '../constants';
 import { getTaskKey } from '../services/logic';
 import { fetchProjects } from '../services/supabase';
 import { generateProjectPDF } from '../services/pdf';
-import { Check, Play, Clock, Calendar, Loader2, FileDown, ZoomIn, ZoomOut, FileText } from 'lucide-react';
+import { exportProjectMatrixToCSV } from '../services/csv';
+import { Check, Play, Clock, Calendar, Loader2, FileDown, ZoomIn, ZoomOut, FileText, Download } from 'lucide-react';
 
 const PublicViewer: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -13,7 +14,6 @@ const PublicViewer: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(100);
-  const [attachmentsExpanded, setAttachmentsExpanded] = useState(false);
 
   useEffect(() => {
     const loadProject = async () => {
@@ -150,6 +150,13 @@ const PublicViewer: React.FC = () => {
             <FileDown className="w-4 h-4" />
             Download PDF
           </button>
+          <button
+            onClick={() => exportProjectMatrixToCSV(project)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm"
+          >
+            <Download className="w-4 h-4" />
+            Download CSV
+          </button>
           <div className="flex items-center gap-1 border border-slate-300 rounded-lg overflow-hidden">
             <button
               onClick={() => setZoomLevel(z => Math.max(10, z - 10))}
@@ -218,43 +225,35 @@ const PublicViewer: React.FC = () => {
           </table>
         </div>
 
-        {/* Attachments Section - Collapsible */}
+        {/* Attachments Section */}
         {project.attachments && project.attachments.length > 0 && (
-          <div className={`border border-slate-200 rounded-lg mt-2 flex-shrink-0 ${attachmentsExpanded ? 'max-h-[40vh] overflow-auto' : ''}`}>
-            <div 
-              className="flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-slate-50 transition-colors"
-              onClick={() => setAttachmentsExpanded(!attachmentsExpanded)}
-            >
-              <div className="flex items-center gap-2">
-                <span className={`text-xs transition-transform ${attachmentsExpanded ? 'rotate-90' : ''}`}>▶</span>
-                <h3 className="text-sm font-semibold text-slate-700">Attachments ({project.attachments.length})</h3>
+          <div className="border border-slate-200 rounded-lg mt-2 flex-shrink-0">
+            <div className="flex items-center px-4 py-2">
+              <h3 className="text-sm font-semibold text-slate-700">Attachments ({project.attachments.length})</h3>
+            </div>
+            <div className="px-4 pb-4">
+              <div className="flex flex-col gap-6">
+                {project.attachments.map(attachment => (
+                  <div key={attachment.id} className="border border-slate-200 rounded-lg overflow-hidden">
+                    {attachment.type === 'image' ? (
+                      <img 
+                        src={attachment.url} 
+                        alt={attachment.name}
+                        className="w-full object-contain"
+                      />
+                    ) : (
+                      <div className="w-full h-40 bg-slate-100 flex flex-col items-center justify-center">
+                        <FileText className="w-12 h-12 text-slate-500 mb-2" />
+                        <span className="text-xs text-slate-900 px-2 text-center truncate w-full">{attachment.name}</span>
+                      </div>
+                    )}
+                    <div className="p-2 bg-white border-t border-slate-200">
+                      <p className="text-xs text-slate-900 truncate" title={attachment.name}>{attachment.name}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-            {attachmentsExpanded && (
-              <div className="px-4 pb-4">
-                <div className="flex flex-col gap-6">
-                  {project.attachments.map(attachment => (
-                    <div key={attachment.id} className="border border-slate-200 rounded-lg overflow-hidden">
-                      {attachment.type === 'image' ? (
-                        <img 
-                          src={attachment.url} 
-                          alt={attachment.name}
-                          className="w-full object-contain"
-                        />
-                      ) : (
-                        <div className="w-full h-40 bg-slate-100 flex flex-col items-center justify-center">
-                          <FileText className="w-12 h-12 text-slate-500 mb-2" />
-                          <span className="text-xs text-slate-900 px-2 text-center truncate w-full">{attachment.name}</span>
-                        </div>
-                      )}
-                      <div className="p-2 bg-white border-t border-slate-200">
-                        <p className="text-xs text-slate-900 truncate" title={attachment.name}>{attachment.name}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
       </main>

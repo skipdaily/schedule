@@ -2,7 +2,129 @@ import { Project, Trade, Unit, Area, Task } from '../types';
 import { getTaskKey } from './logic';
 
 /**
- * Export project to CSV format (Excel-compatible)
+ * Export project to CSV format matching PDF layout
+ */
+export const exportProjectMatrixToCSV = (project: Project): void => {
+  const dayAbbr = ['sun', 'mon', 'tues', 'wed', 'thurs', 'fri', 'sat'];
+  
+  // Create header section
+  let csv = `${escapeCSV(project.name)}\n`;
+  csv += `Address: ${escapeCSV(project.address)}\n`;
+  
+  if (project.projectedCompletionDate) {
+    csv += `Target Completion: ${project.projectedCompletionDate}\n`;
+  }
+  
+  // Calculate statistics
+  const tasks = Object.values(project.tasks);
+  const ready = tasks.filter(t => t.status === 'ready').length;
+  const progress = tasks.filter(t => t.status === 'in-progress').length;
+  const done = tasks.filter(t => t.status === 'complete').length;
+  const total = tasks.length;
+  const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+  
+  csv += `Overall Progress: ${percent}% | Ready: ${ready} | In Progress: ${progress} | Complete: ${done}\n`;
+  csv += '\n';
+  
+  // Interior Matrix
+  csv += 'INTERIOR MATRIX\n';
+  const interiorTrades = project.trades.filter(t => t.scope === 'interior');
+  
+  // Header row
+  csv += ['Unit', ...interiorTrades.map(t => escapeCSV(t.name))].join(',') + '\n';
+  
+  // Data rows
+  project.units.forEach(unit => {
+    const row: string[] = [escapeCSV(unit.name)];
+    
+    interiorTrades.forEach(trade => {
+      const key = getTaskKey(unit.id, trade.id);
+      const task = project.tasks[key];
+      
+      let cellText = '';
+      
+      if (task) {
+        // Helper to parse date string (YYYY-MM-DD) without timezone issues
+        const parseDate = (dateStr: string): Date | null => {
+          const parts = dateStr.split('-');
+          if (parts.length === 3) {
+            const y = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10);
+            const d = parseInt(parts[2], 10);
+            return new Date(y, m - 1, d);
+          }
+          return null;
+        };
+        
+        // Format start date
+        let startStr = '';
+        if (task.expectedStartDate) {
+          const dateObj = parseDate(task.expectedStartDate);
+          if (dateObj) {
+            startStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()} ${dayAbbr[dateObj.getDay()]}`;
+          }
+        }
+        
+        // Format finish date
+        let finishStr = '';
+        if (task.expectedFinishDate) {
+          const dateObj = parseDate(task.expectedFinishDate);
+          if (dateObj) {
+            finishStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()} ${dayAbbr[dateObj.getDay()]}`;
+          }
+        }
+        
+        // Build cell content based on status
+        if (task.status === 'complete') {
+          if (task.completedDate) {
+            const d = new Date(task.completedDate);
+            cellText = `Done ${d.getMonth() + 1}/${d.getDate()}`;
+          } else {
+            cellText = 'DONE';
+          }
+        } else if (task.status === 'in-progress') {
+          cellText = `Work ${task.percentComplete || 0}%`;
+          if (startStr && finishStr) {
+            cellText += ` | S: ${startStr} | F: ${finishStr}`;
+          } else if (startStr) {
+            cellText += ` | S: ${startStr}`;
+          }
+        } else if (task.status === 'ready') {
+          cellText = 'READY';
+          if (startStr && finishStr) {
+            cellText += ` | S: ${startStr} | F: ${finishStr}`;
+          } else if (startStr) {
+            cellText += ` | S: ${startStr}`;
+          }
+        } else if (task.status === 'not-started') {
+          if (startStr && finishStr) {
+            cellText = `S: ${startStr} | F: ${finishStr}`;
+          } else if (startStr) {
+            cellText = `S: ${startStr}`;
+          }
+        }
+      }
+      
+      row.push(escapeCSV(cellText));
+    });
+    
+    csv += row.join(',') + '\n';
+  });
+  
+  // Trigger download
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', `${project.name.replace(/[^a-z0-9]/gi, '_')}_matrix.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+/**
+ * Export project to CSV format (Excel-compatible) - LEGACY VERSION
  */
 export const exportProjectToCSV = (project: Project): void => {
   // Create metadata section
@@ -49,46 +171,6 @@ export const exportProjectToCSV = (project: Project): void => {
       row.push(task?.expectedStartDate || '');
     });
     csv += row.join(',') + '\n';
-  });
-  csv += '\n';
-
-  // Exterior Matrix (Area x Trades)
-  csv += 'EXTERIOR MATRIX\n';
-  const exteriorTrades = project.trades.filter(t => t.scope === 'exterior');
-  csv += ['Area', ...exteriorTrades.map(t => escapeCSV(t.name))].join(',') + '\n';
-  project.areas.forEach(area => {
-    const row: string[] = [escapeCSV(area.name)];
-    exteriorTrades.forEach(trade => {
-      const key = getTaskKey(area.id, trade.id);
-      const task = project.tasks[key];
-      row.push(task?.expectedStartDate || '');
-    });
-    csv += row.join(',') + '\n';
-  });
-  csv += '\n';
-
-  // Detailed Tasks section with all task data
-  csv += 'TASKS\n';
-  csv += 'Unit/Area,Trade,Status,Expected Start Date,Completed Date,Percent Complete,Last Updated\n';
-  
-  // Interior tasks (units) - ordered like matrix
-  const interiorTradesOrdered = [...interiorTrades].sort((a, b) => a.orderIndex - b.orderIndex);
-  project.units.forEach(unit => {
-    interiorTradesOrdered.forEach(trade => {
-      const key = getTaskKey(unit.id, trade.id);
-      const task = project.tasks[key];
-      csv += `${escapeCSV(unit.name)},${escapeCSV(trade.name)},${task?.status || 'not-started'},${task?.expectedStartDate || ''},${task?.completedDate || ''},${task?.percentComplete ?? ''},${task?.lastUpdated || ''}\n`;
-    });
-  });
-  
-  // Exterior tasks (areas) - ordered like matrix
-  const exteriorTradesOrdered = [...exteriorTrades].sort((a, b) => a.orderIndex - b.orderIndex);
-  project.areas.forEach(area => {
-    exteriorTradesOrdered.forEach(trade => {
-      const key = getTaskKey(area.id, trade.id);
-      const task = project.tasks[key];
-      csv += `${escapeCSV(area.name)},${escapeCSV(trade.name)},${task?.status || 'not-started'},${task?.expectedStartDate || ''},${task?.completedDate || ''},${task?.percentComplete ?? ''},${task?.lastUpdated || ''}\n`;
-    });
   });
 
   // Download the file

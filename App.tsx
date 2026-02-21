@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Project, ViewMode, TaskStatus, Unit, Trade, Attachment } from './types';
 import { updateReadinessState, getTaskKey, pushLinkedTasks, ensureWeekday } from './services/logic';
 import { generateProjectPDF } from './services/pdf';
-import { exportProjectToCSV, importProjectFromCSV, downloadTemplateCSV } from './services/csv';
+import { exportProjectToCSV, exportProjectMatrixToCSV, importProjectFromCSV, downloadTemplateCSV } from './services/csv';
 import { fetchAppState, fetchProjects, saveAppState, upsertProject, deleteProject as deleteProjectRemote, uploadAttachment, deleteAttachment } from './services/supabase';
 import Dashboard from './components/Dashboard';
 import MatrixView from './components/MatrixView';
@@ -41,9 +41,6 @@ const App: React.FC = () => {
   
   // Push dates toggle (controls whether date changes cascade to linked tasks)
   const [pushDatesEnabled, setPushDatesEnabled] = useState(false);
-  
-  // Attachments section collapsed state
-  const [attachmentsExpanded, setAttachmentsExpanded] = useState(false);
   
   // Attachment upload ref
   const attachmentInputRef = useRef<HTMLInputElement>(null);
@@ -342,6 +339,17 @@ const App: React.FC = () => {
         } catch (error) {
             console.error('PDF generation failed:', error);
             alert('Failed to generate PDF. Please try again.');
+        }
+    }
+  };
+
+  const handleDownloadCsv = () => {
+    if (project) {
+        try {
+            exportProjectMatrixToCSV(project);
+        } catch (error) {
+            console.error('CSV generation failed:', error);
+            alert('Failed to generate CSV. Please try again.');
         }
     }
   };
@@ -937,6 +945,14 @@ const App: React.FC = () => {
                             <Download className="w-5 h-5" />
                         </button>
 
+                        <button 
+                            onClick={handleDownloadCsv}
+                            className="text-slate-300 hover:text-white p-2 rounded-full hover:bg-slate-800 transition-colors"
+                            title="Download CSV Matrix"
+                        >
+                            <FileDown className="w-5 h-5" />
+                        </button>
+
                         
                         <button 
                             onClick={() => setShowSettings(true)}
@@ -961,7 +977,7 @@ const App: React.FC = () => {
       </nav>
 
       {/* Content Area */}
-      <main className={`flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full ${view === 'matrix' && project ? 'min-h-0 overflow-hidden flex flex-col py-2' : 'py-6'}`}>
+      <main className={`flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full ${view === 'matrix' && project ? 'min-h-0 overflow-auto flex flex-col py-2' : 'py-6'}`}>
         {!project && view !== 'setup' ? (
            <div className="flex flex-col items-center justify-center h-[80vh] text-center space-y-6">
                 <div className="bg-white p-10 rounded-2xl shadow-xl border border-slate-200 max-w-lg">
@@ -985,22 +1001,20 @@ const App: React.FC = () => {
             {view === 'setup' && <ProjectSetup onSave={handleCreateProject} onCancel={() => setView('dashboard')} />}
             {view === 'dashboard' && <Dashboard project={project} onTaskClick={handleTaskClick} />}
             {view === 'matrix' && (
-              <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                <div className="flex-1 min-h-0">
+              <div className="flex flex-col">
+                <div style={{ height: 'calc(100vh - 120px)' }}>
                   <MatrixView project={project} onTaskClick={handleTaskClick} onReorderUnits={handleReorderUnits} onReorderTrades={handleReorderTrades} onDeleteTrade={handleDeleteTrade} onAddTrade={handleAddTrade} onEditTrade={handleEditTrade} onAddUnit={handleAddUnit} onEditUnit={handleEditUnit} onDeleteUnit={handleDeleteUnit} isLinkingMode={isLinkingMode} linkingFromTask={linkingFromTask} onCancelLinking={cancelLinkingMode} />
                 </div>
                 
-                {/* Attachments Section - Collapsible */}
-                <div className={`bg-white shadow-sm rounded-lg border border-slate-200 mt-2 flex-shrink-0 ${attachmentsExpanded ? 'max-h-[40vh] overflow-auto' : ''}`}>
+                {/* Attachments Section */}
+                <div className="bg-white shadow-sm rounded-lg border border-slate-200 mt-2 flex-shrink-0">
                   <div 
-                    className="flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-slate-50 transition-colors"
-                    onClick={() => setAttachmentsExpanded(!attachmentsExpanded)}
+                    className="flex items-center justify-between px-4 py-2"
                   >
                     <div className="flex items-center gap-2">
-                      <span className={`text-xs transition-transform ${attachmentsExpanded ? 'rotate-90' : ''}`}>▶</span>
                       <h3 className="text-sm font-semibold text-slate-700">Attachments {project?.attachments?.length ? `(${project.attachments.length})` : ''}</h3>
                     </div>
-                    <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center gap-2">
                       <input
                         ref={attachmentInputRef}
                         type="file"
@@ -1019,12 +1033,11 @@ const App: React.FC = () => {
                     </div>
                   </div>
                   
-                  {attachmentsExpanded && (
-                    <div className="px-4 pb-4">
-                      {(!project?.attachments || project.attachments.length === 0) ? (
-                        <p className="text-slate-500 text-sm">No attachments yet. Upload photos or PDFs to include them in reports.</p>
-                      ) : (
-                        <div className="flex flex-col gap-6">
+                  <div className="px-4 pb-4">
+                    {(!project?.attachments || project.attachments.length === 0) ? (
+                      <p className="text-slate-500 text-sm">No attachments yet. Upload photos or PDFs to include them in reports.</p>
+                    ) : (
+                      <div className="flex flex-col gap-6">
                       {project.attachments.map(attachment => (
                         <div key={attachment.id} className="relative group border border-slate-200 rounded-lg overflow-hidden">
                           <div className="flex items-center justify-between p-3 bg-slate-50 border-b border-slate-200">
@@ -1056,8 +1069,7 @@ const App: React.FC = () => {
                       ))}
                     </div>
                   )}
-                    </div>
-                  )}
+                  </div>
                 </div>
               </div>
             )}
