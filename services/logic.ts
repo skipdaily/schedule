@@ -6,7 +6,7 @@ import { Project, Task, Trade } from '../types';
 export const getTaskKey = (unitId: string, tradeId: string) => `${unitId}_${tradeId}`;
 
 /**
- * Add business days (Monday-Friday only) to a date string
+ * Add work days (Monday-Saturday, skipping Sunday) to a date string
  */
 const addBusinessDays = (dateStr: string, days: number): string => {
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -15,9 +15,8 @@ const addBusinessDays = (dateStr: string, days: number): string => {
   let remaining = days;
   while (remaining > 0) {
     date.setDate(date.getDate() + 1);
-    const dayOfWeek = date.getDay();
-    // Skip Saturday (6) and Sunday (0)
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+    // Skip Sunday (0) only
+    if (date.getDay() !== 0) {
       remaining--;
     }
   }
@@ -26,7 +25,7 @@ const addBusinessDays = (dateStr: string, days: number): string => {
 };
 
 /**
- * Subtract business days (Monday-Friday only) from a date string
+ * Subtract work days (Monday-Saturday, skipping Sunday) from a date string
  */
 const subtractBusinessDays = (dateStr: string, days: number): string => {
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -35,46 +34,42 @@ const subtractBusinessDays = (dateStr: string, days: number): string => {
   let remaining = days;
   while (remaining > 0) {
     date.setDate(date.getDate() - 1);
-    const dayOfWeek = date.getDay();
-    // Skip Saturday (6) and Sunday (0)
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+    // Skip Sunday (0) only
+    if (date.getDay() !== 0) {
       remaining--;
     }
   }
   
-  // Ensure result is a weekday
-  const finalDay = date.getDay();
-  if (finalDay === 0) {
-    date.setDate(date.getDate() + 1); // Sunday -> Monday
-  } else if (finalDay === 6) {
-    date.setDate(date.getDate() + 2); // Saturday -> Monday
+  // If result lands on Sunday, move to Saturday
+  if (date.getDay() === 0) {
+    date.setDate(date.getDate() - 1);
   }
   
   return date.toISOString().split('T')[0];
 };
 
 /**
- * Ensure a date falls on a weekday (Monday-Friday)
- * If it's a weekend, move to next Monday
+ * Returns the date as-is (all days including weekends are allowed for manual input)
  */
 export const ensureWeekday = (dateStr: string): string => {
+  return dateStr;
+};
+
+/**
+ * If a date falls on Sunday, move it back to Saturday.
+ * Used for auto-calculated linked/cascaded dates only.
+ */
+const avoidSunday = (dateStr: string): string => {
   const [y, m, d] = dateStr.split('-').map(Number);
   const date = new Date(y, m - 1, d);
-  const dayOfWeek = date.getDay();
-  
-  if (dayOfWeek === 0) {
-    // Sunday -> Monday
-    date.setDate(date.getDate() + 1);
-  } else if (dayOfWeek === 6) {
-    // Saturday -> Monday
-    date.setDate(date.getDate() + 2);
+  if (date.getDay() === 0) {
+    date.setDate(date.getDate() - 1); // Sunday -> Saturday
   }
-  
   return date.toISOString().split('T')[0];
 };
 
 /**
- * Calculate the difference in business days between two date strings
+ * Calculate the difference in work days (Mon-Sat, skipping Sunday) between two date strings
  */
 const businessDaysBetween = (date1: string, date2: string): number => {
   const [y1, m1, d1] = date1.split('-').map(Number);
@@ -87,8 +82,8 @@ const businessDaysBetween = (date1: string, date2: string): number => {
   
   while (start.toDateString() !== end.toDateString()) {
     start.setDate(start.getDate() + direction);
-    const day = start.getDay();
-    if (day !== 0 && day !== 6) {
+    // Skip Sunday (0) only
+    if (start.getDay() !== 0) {
       count += direction;
     }
   }
@@ -146,9 +141,9 @@ export const pushLinkedTasks = (
   // Also push the finish date by the same number of days
   if (changedTask.expectedFinishDate && daysMoved !== 0) {
     if (daysMoved > 0) {
-      updatedChangedTask.expectedFinishDate = ensureWeekday(addBusinessDays(changedTask.expectedFinishDate, daysMoved));
+      updatedChangedTask.expectedFinishDate = avoidSunday(addBusinessDays(changedTask.expectedFinishDate, daysMoved));
     } else {
-      updatedChangedTask.expectedFinishDate = ensureWeekday(subtractBusinessDays(changedTask.expectedFinishDate, Math.abs(daysMoved)));
+      updatedChangedTask.expectedFinishDate = avoidSunday(subtractBusinessDays(changedTask.expectedFinishDate, Math.abs(daysMoved)));
     }
   }
   
@@ -178,9 +173,9 @@ export const pushLinkedTasks = (
     // Move this task by the same number of days as the changed task
     let newDate: string;
     if (daysMoved > 0) {
-      newDate = ensureWeekday(addBusinessDays(originalCurrentTask.expectedStartDate, daysMoved));
+      newDate = avoidSunday(addBusinessDays(originalCurrentTask.expectedStartDate, daysMoved));
     } else {
-      newDate = ensureWeekday(subtractBusinessDays(originalCurrentTask.expectedStartDate, Math.abs(daysMoved)));
+      newDate = avoidSunday(subtractBusinessDays(originalCurrentTask.expectedStartDate, Math.abs(daysMoved)));
     }
 
     const updatedTask: Task = {
@@ -192,9 +187,9 @@ export const pushLinkedTasks = (
     // Also push the finish date if it exists
     if (originalCurrentTask.expectedFinishDate) {
       if (daysMoved > 0) {
-        updatedTask.expectedFinishDate = ensureWeekday(addBusinessDays(originalCurrentTask.expectedFinishDate, daysMoved));
+        updatedTask.expectedFinishDate = avoidSunday(addBusinessDays(originalCurrentTask.expectedFinishDate, daysMoved));
       } else {
-        updatedTask.expectedFinishDate = ensureWeekday(subtractBusinessDays(originalCurrentTask.expectedFinishDate, Math.abs(daysMoved)));
+        updatedTask.expectedFinishDate = avoidSunday(subtractBusinessDays(originalCurrentTask.expectedFinishDate, Math.abs(daysMoved)));
       }
     }
     
@@ -239,18 +234,18 @@ export const pushLinkedTasks = (
         const originalTask = tasks[taskKey];
         const updatedLinkedTask: Task = {
           ...task,
-          expectedStartDate: ensureWeekday(newDate),
+          expectedStartDate: avoidSunday(newDate),
           lastUpdated: new Date().toISOString()
         };
         
         // Also push the finish date if it exists
         if (originalTask?.expectedFinishDate && originalTask.expectedStartDate) {
           const finishDaysDiff = businessDaysBetween(originalTask.expectedStartDate, originalTask.expectedFinishDate);
-          const newTaskDateMoved = businessDaysBetween(originalTask.expectedStartDate, ensureWeekday(newDate));
+          const newTaskDateMoved = businessDaysBetween(originalTask.expectedStartDate, avoidSunday(newDate));
           if (newTaskDateMoved > 0) {
-            updatedLinkedTask.expectedFinishDate = ensureWeekday(addBusinessDays(originalTask.expectedFinishDate, newTaskDateMoved));
+            updatedLinkedTask.expectedFinishDate = avoidSunday(addBusinessDays(originalTask.expectedFinishDate, newTaskDateMoved));
           } else {
-            updatedLinkedTask.expectedFinishDate = ensureWeekday(subtractBusinessDays(originalTask.expectedFinishDate, Math.abs(newTaskDateMoved)));
+            updatedLinkedTask.expectedFinishDate = avoidSunday(subtractBusinessDays(originalTask.expectedFinishDate, Math.abs(newTaskDateMoved)));
           }
         }
         
@@ -292,9 +287,9 @@ export const pushLinkedTasks = (
 
       let newDate: string;
       if (movedDays > 0) {
-        newDate = ensureWeekday(addBusinessDays(originalCurrentTask.expectedStartDate, movedDays));
+        newDate = avoidSunday(addBusinessDays(originalCurrentTask.expectedStartDate, movedDays));
       } else {
-        newDate = ensureWeekday(subtractBusinessDays(originalCurrentTask.expectedStartDate, Math.abs(movedDays)));
+        newDate = avoidSunday(subtractBusinessDays(originalCurrentTask.expectedStartDate, Math.abs(movedDays)));
       }
 
       const updatedCascadeTask: Task = {
@@ -306,9 +301,9 @@ export const pushLinkedTasks = (
       // Also push the finish date if it exists
       if (originalCurrentTask.expectedFinishDate) {
         if (movedDays > 0) {
-          updatedCascadeTask.expectedFinishDate = ensureWeekday(addBusinessDays(originalCurrentTask.expectedFinishDate, movedDays));
+          updatedCascadeTask.expectedFinishDate = avoidSunday(addBusinessDays(originalCurrentTask.expectedFinishDate, movedDays));
         } else {
-          updatedCascadeTask.expectedFinishDate = ensureWeekday(subtractBusinessDays(originalCurrentTask.expectedFinishDate, Math.abs(movedDays)));
+          updatedCascadeTask.expectedFinishDate = avoidSunday(subtractBusinessDays(originalCurrentTask.expectedFinishDate, Math.abs(movedDays)));
         }
       }
       
